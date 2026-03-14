@@ -1,0 +1,39 @@
+{
+  "repos": [
+    {
+      "name": "Memory",
+      "path": "E:\\Create\\Build\\Memory",
+      "remote": "https://github.com/matthieuhuguet/memory.git",
+      "icon": "brain",
+      "color": "#A78BFA"
+    },
+    {
+      "name": "Screenshots",
+      "path": "C:\\Users\\matth\\Pictures\\Screenshots",
+      "remote": "https://github.com/matthieuhuguet/screenshots.git",
+      "icon": "camera",
+      "color": "#c6301d"
+    },
+    {
+      "name": "Downloads",
+      "path": "C:\\Users\\matth\\Downloads",
+      "remote": "https://github.com/matthieuhuguet/downloads-archive.git",
+      "icon": "download",
+      "color": "#60A5FA"
+    },
+    {
+      "name": "Portfolio",
+      "path": "E:\\Create\\Build\\PortfolioShare",
+      "remote": "https://github.com/matthieuhuguet/portfolio-share.git",
+      "icon": "portfolio",
+      "color": "#FB923C"
+    }
+  ],
+  "auto_check_interval_minutes": 5,
+  "max_file_size_mb": 49,
+  "batch_size": 50,
+  "window": {
+    "width": 400,
+    "height": 860
+  }
+}
