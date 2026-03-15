@@ -33,7 +33,7 @@
   "max_file_size_mb": 49,
   "batch_size": 50,
   "window": {
-    "width": 400,
-    "height": 860
+    "width": 3840,
+    "height": 2284
   }
 }

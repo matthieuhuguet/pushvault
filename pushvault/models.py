@@ -54,6 +54,7 @@ class RepoStatus:
     behind: int = 0
     branch: str = ""
     error: str = ""
+    last_commit_time: str = ""  # e.g. "2 hours ago"
 
     @property
     def total_changes(self) -> int:
@@ -109,8 +110,8 @@ class AppConfig:
     auto_check_interval_minutes: int = 5
     max_file_size_mb: int = 49
     batch_size: int = 50
-    window_width: int = 400
-    window_height: int = 860
+    window_width: int = 580
+    window_height: int = 720
 
 
 @dataclass

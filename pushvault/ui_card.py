@@ -1,7 +1,8 @@
-"""Repo card widget — repository status, actions, and error display."""
+"""Repo card widget — clean utility card."""
 
 from __future__ import annotations
 
+import colorsys
 import subprocess
 import tkinter as tk
 from typing import TYPE_CHECKING, Optional
@@ -9,372 +10,381 @@ from typing import TYPE_CHECKING, Optional
 import customtkinter as ctk
 
 from .models import RepoConfig, RepoStatus, SyncState
-from .theme import (
-    Colors,
-    Fonts,
-    REPO_ICONS,
-    STATUS_COLORS,
-    STATUS_ICONS,
-    Spacing,
-    hex_blend,
-)
+from .theme import Colors, Fonts, REPO_ICONS, STATUS_ICONS, Spacing
+
+
+def _gradient_pair(hex_color: str) -> tuple[str, str]:
+    """Derive (top_color, bottom_color) gradient pair from a base hex color."""
+    r = int(hex_color[1:3], 16) / 255.0
+    g = int(hex_color[3:5], 16) / 255.0
+    b = int(hex_color[5:7], 16) / 255.0
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    # Top: lighter, slightly desaturated, minor hue shift left
+    h1 = (h - 0.03) % 1.0
+    r1, g1, b1 = colorsys.hsv_to_rgb(h1, s * 0.60, min(v * 1.35, 1.0))
+    # Bottom: darker, more saturated, minor hue shift right
+    h2 = (h + 0.08) % 1.0
+    r2, g2, b2 = colorsys.hsv_to_rgb(h2, min(s * 1.1, 1.0), v * 0.58)
+    c1 = f"#{int(r1*255):02x}{int(g1*255):02x}{int(b1*255):02x}"
+    c2 = f"#{int(r2*255):02x}{int(g2*255):02x}{int(b2*255):02x}"
+    return c1, c2
 
 if TYPE_CHECKING:
     from .ui_main import PushVaultApp
 
 
-class PillBadge(ctk.CTkFrame):
-    def __init__(self, parent, text: str, color: str, **kwargs):
-        super().__init__(parent, fg_color=Colors.BADGE_BG, corner_radius=10, height=20, **kwargs)
-        ctk.CTkLabel(self, text=text, font=Fonts.TINY, text_color=color, height=18).pack(padx=8, pady=1)
-
-
 class RepoCard(ctk.CTkFrame):
-    """Repository card with status, actions, inline error, and staging button."""
+    """Clean utility-style horizontal repo card."""
+
+    CARD_H = 76
+    ICON_W = 76
+    BTN_W  = 88
 
     def __init__(self, parent, repo: RepoConfig, app: "PushVaultApp", **kwargs):
         super().__init__(
             parent,
-            fg_color=Colors.BG_SECONDARY,
-            corner_radius=16,
-            border_width=0,
+            fg_color=Colors.CARD_BG,
+            corner_radius=8,
+            height=self.CARD_H,
             **kwargs,
         )
-        self.repo = repo
-        self.app = app
+        self.repo   = repo
+        self.app    = app
         self.status = RepoStatus()
-        self._checking = False
-        self._spinner_angle = 0
+
+        self._checking          = False
+        self._spinner_angle     = 0
         self._spinner_after_id: Optional[str] = None
-        self._error_msg: str = ""
+        self._error_msg: str    = ""
 
-        # Flicker-prevention caches — skip re-layout when nothing changed
-        self._last_btn_key: Optional[tuple] = None
-        self._last_badges: Optional[list] = None
-        self._status_frame_visible: Optional[bool] = None
-
-        self.bind("<Enter>", self._on_enter)
-        self.bind("<Leave>", self._on_leave)
+        self.pack_propagate(False)
+        self.bind("<Enter>",    self._on_enter)
+        self.bind("<Leave>",    self._on_leave)
+        self.bind("<Button-3>", self._show_context_menu)
+        self.bind("<Button-1>", self._on_click)
         self._build_ui()
 
+    # ── Hover ─────────────────────────────────────────────────────
+
     def _on_enter(self, _=None):
-        if self.status.state != SyncState.CHECKING:
-            self.configure(fg_color=Colors.BG_HOVER)
+        self.configure(fg_color=Colors.CARD_HOVER)
 
     def _on_leave(self, _=None):
-        self.configure(fg_color=Colors.BG_SECONDARY)
+        self.configure(fg_color=Colors.CARD_BG)
 
-    def _apply_border_for_state(self):
-        pass  # Borderless Spotify design — depth from bg color hierarchy
+    # ── Layout ────────────────────────────────────────────────────
 
     def _build_ui(self):
-        self.grid_columnconfigure(0, weight=1)
+        accent = self.repo.color or Colors.ACCENT
 
-        # ── Row 0: Icon + Name + Branch + Status icon ──
-        header = ctk.CTkFrame(self, fg_color="transparent")
-        header.grid(row=0, column=0, sticky="ew", padx=Spacing.LG, pady=(Spacing.SM, Spacing.XS))
-        header.grid_columnconfigure(1, weight=1)
+        # ── Left: gradient icon block ──────────────────────────────
+        c1, c2 = _gradient_pair(accent)
+        r1, g1, b1 = int(c1[1:3], 16), int(c1[3:5], 16), int(c1[5:7], 16)
+        r2, g2, b2 = int(c2[1:3], 16), int(c2[3:5], 16), int(c2[5:7], 16)
 
-        self._accent_dot = ctk.CTkLabel(
-            header, text="●", font=("Segoe UI", 12),
-            text_color=Colors.TEXT_TERTIARY, width=16,
+        thumb = tk.Canvas(
+            self,
+            width=self.ICON_W, height=self.CARD_H,
+            highlightthickness=0, bd=0,
+            bg=Colors.CARD_BG,
         )
-        self._accent_dot.grid(row=0, column=0, padx=(0, Spacing.SM))
+        # place() not pack() — pixel-perfect flush positioning at (0,0)
+        thumb.place(x=0, y=0, width=self.ICON_W, height=self.CARD_H)
 
+        # 45° diagonal gradient: lines where x+y = d
+        n = self.ICON_W  # square (ICON_W == CARD_H)
+        total = 2 * (n - 1)
+        for d in range(total + 1):
+            t = d / total
+            rv = int(r1 + (r2 - r1) * t)
+            gv = int(g1 + (g2 - g1) * t)
+            bv = int(b1 + (b2 - b1) * t)
+            color = f"#{rv:02x}{gv:02x}{bv:02x}"
+            if d < n:
+                thumb.create_line(0, d, d, 0, fill=color)
+            else:
+                thumb.create_line(d - n + 1, n - 1, n - 1, d - n + 1, fill=color)
+
+        # Round left corners to match CTkFrame corner_radius=8
+        cr = 8
+        # Top-left
+        thumb.create_rectangle(0, 0, cr, cr, fill=Colors.CARD_BG, outline="")
+        thumb.create_arc(0, 0, cr * 2, cr * 2, start=90, extent=90, fill=c1, outline=c1)
+        # Bottom-left
+        thumb.create_rectangle(0, self.CARD_H - cr, cr, self.CARD_H, fill=Colors.CARD_BG, outline="")
+        thumb.create_arc(0, self.CARD_H - cr * 2, cr * 2, self.CARD_H, start=180, extent=90, fill=c2, outline=c2)
+
+        initial = (self.repo.name[0].upper()) if self.repo.name else "?"
+        thumb.create_text(
+            self.ICON_W // 2, self.CARD_H // 2,
+            text=initial,
+            font=("Segoe UI Variable", 30, "bold"),
+            fill="#FFFFFF",
+            anchor="center",
+        )
+
+        for ev, fn in [("<Enter>", self._on_enter), ("<Button-1>", self._on_click),
+                       ("<Button-3>", self._show_context_menu)]:
+            thumb.bind(ev, fn)
+
+        # ── Right: action button (always visible) ─────────────────
+        self._action_btn = ctk.CTkButton(
+            self,
+            text="↑ Push",
+            font=Fonts.SMALL_BOLD,
+            fg_color=Colors.ACCENT,
+            hover_color=Colors.ACCENT_HOVER,
+            text_color=Colors.TEXT_INVERSE,
+            width=90, height=34,
+            corner_radius=8,
+            border_width=0,
+            command=self._on_action,
+        )
+        self._action_btn.pack(side="right", padx=(8, 14))
+
+        # ── Middle: text info ──────────────────────────────────────
+        info = ctk.CTkFrame(self, fg_color="transparent")
+        info.pack(side="left", fill="both", expand=True, padx=(self.ICON_W + 12, 4))
+        for ev, fn in [("<Enter>", self._on_enter), ("<Button-1>", self._on_click)]:
+            info.bind(ev, fn)
+
+        # Name
         self._name_label = ctk.CTkLabel(
-            header, text=self.repo.name,
-            font=Fonts.BODY_BOLD, text_color=Colors.TEXT_PRIMARY, anchor="w",
+            info, text=self.repo.name,
+            font=Fonts.BODY_BOLD,
+            text_color=Colors.TEXT_PRIMARY,
+            anchor="w",
         )
-        self._name_label.grid(row=0, column=1, sticky="w")
+        self._name_label.pack(fill="x", pady=(10, 2))
+        self._name_label.bind("<Enter>",    self._on_enter)
+        self._name_label.bind("<Button-1>", self._on_click)
 
-        self._branch_label = ctk.CTkLabel(
-            header, text="",
-            font=Fonts.TINY, text_color=Colors.TEXT_TERTIARY,
-        )
-        self._branch_label.grid(row=0, column=2, padx=(Spacing.SM, 0))
-
-        self._status_icon_label = ctk.CTkLabel(
-            header, text="", font=Fonts.SMALL,
-            text_color=Colors.TEXT_TERTIARY, width=20,
-        )
-        self._status_icon_label.grid(row=0, column=3, padx=(Spacing.XS, 0))
-
-        # ── Row 1: Status label + badges (hidden when synced) ──
-        self._status_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self._status_frame.grid(row=1, column=0, sticky="ew", padx=Spacing.LG, pady=(0, Spacing.XS))
+        # Status + meta row
+        status_row = ctk.CTkFrame(info, fg_color="transparent")
+        status_row.pack(fill="x")
+        status_row.bind("<Enter>", self._on_enter)
 
         self._status_label = ctk.CTkLabel(
-            self._status_frame, text="Checking…",
-            font=Fonts.SMALL, text_color=Colors.TEXT_SECONDARY, anchor="w",
+            status_row, text="Checking…",
+            font=Fonts.SMALL,
+            text_color=Colors.TEXT_SECONDARY,
+            anchor="w",
         )
         self._status_label.pack(side="left")
 
-        self._badges_frame = ctk.CTkFrame(self._status_frame, fg_color="transparent")
-        self._badges_frame.pack(side="right")
-
-        # ── Row 2: Action buttons ──
-        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        btn_frame.grid(row=2, column=0, sticky="ew", padx=Spacing.LG, pady=(0, Spacing.MD))
-
-        btn_kw = dict(height=30, corner_radius=20, font=Fonts.SMALL_BOLD, border_width=0)
-
-        self._push_btn = ctk.CTkButton(
-            btn_frame, text="↑ Push",
-            command=self._on_push,
-            fg_color="#cd1504",
-            hover_color="#a81003",
-            text_color="#FFFFFF",
-            width=76, **btn_kw,
-        )
-        self._push_btn.pack(side="left", padx=(0, Spacing.XS))
-
-        self._pull_btn = ctk.CTkButton(
-            btn_frame, text="↓ Pull",
-            command=self._on_pull,
-            fg_color=Colors.BG_TERTIARY, hover_color=Colors.BG_HOVER,
-            text_color=Colors.TEXT_SECONDARY,
-            width=68, **btn_kw,
-        )
-        self._pull_btn.pack(side="left", padx=(0, Spacing.XS))
-
-        self._changes_btn = ctk.CTkButton(
-            btn_frame, text="≡ Changes",
-            command=self._on_changes,
-            fg_color=Colors.BG_TERTIARY, hover_color=Colors.BG_HOVER,
-            text_color=Colors.TEXT_SECONDARY,
-            width=88, **btn_kw,
-        )
-        self._changes_btn.pack(side="left", padx=(0, Spacing.XS))
-
-        self._conflict_btn = ctk.CTkButton(
-            btn_frame, text="⚠ Resolve Conflicts",
-            command=self._on_resolve,
-            fg_color=Colors.ERROR_BG,
-            hover_color=hex_blend(Colors.ERROR_BG, Colors.ERROR, 0.2),
-            text_color=Colors.ERROR,
-            width=152, **btn_kw,
-        )
-        # Hidden by default
-
-        self._folder_btn = ctk.CTkButton(
-            btn_frame, text="↗",
-            command=self._on_open_folder,
-            fg_color="transparent", hover_color=Colors.BG_TERTIARY,
+        self._meta_label = ctk.CTkLabel(
+            status_row, text="",
+            font=Fonts.TINY,
             text_color=Colors.TEXT_TERTIARY,
-            width=30, height=30, corner_radius=15,
-            font=("Segoe UI", 12), border_width=0,
+            anchor="w",
         )
-        self._folder_btn.pack(side="right")
+        self._meta_label.pack(side="left", padx=(10, 0))
 
-        # ── Row 3: Inline error message (hidden by default) ──
+        # ── Error bar (hidden) ────────────────────────────────────
         self._error_frame = ctk.CTkFrame(
-            self, fg_color=Colors.ERROR_BG,
-            corner_radius=8, border_width=0,
+            self, fg_color=Colors.ERROR_BG, corner_radius=0,
         )
         self._error_label = ctk.CTkLabel(
             self._error_frame, text="",
-            font=Fonts.SMALL, text_color=Colors.ERROR, anchor="w",
-            wraplength=320,
+            font=Fonts.TINY, text_color=Colors.ERROR, anchor="w",
         )
-        self._error_label.pack(fill="x", padx=Spacing.SM, pady=Spacing.XS)
+        self._error_label.pack(fill="x", padx=8, pady=2)
 
-        # ── Row 4: Progress bar (hidden by default) ──
+        # ── Progress bar (hidden) ─────────────────────────────────
         self._progress = ctk.CTkProgressBar(
             self,
             fg_color=Colors.BG_PRIMARY,
-            progress_color=Colors.SUCCESS,
-            height=2, corner_radius=1,
+            progress_color=Colors.ACCENT,
+            height=2, corner_radius=0,
         )
         self._progress.set(0)
+
+    # ── Status update ─────────────────────────────────────────────
 
     def update_status(self, status: RepoStatus) -> None:
         self.status = status
         state = status.state.value
-        color = STATUS_COLORS.get(state, Colors.TEXT_TERTIARY)
 
-        self._status_icon_label.configure(
-            text=STATUS_ICONS.get(state, ""),
-            text_color=color,
-        )
-
+        # Meta line: branch · last commit
+        meta_parts = []
         if status.branch:
-            self._branch_label.configure(
-                text=f"  {status.branch}",
-                text_color=Colors.TEXT_TERTIARY,
+            meta_parts.append(status.branch)
+        if status.last_commit_time:
+            meta_parts.append(status.last_commit_time)
+        self._meta_label.configure(text="  ·  ".join(meta_parts))
+
+        icon = STATUS_ICONS.get(state, "")
+
+        if state == "synced":
+            self._status_label.configure(
+                text=f"{icon} Synced", text_color=Colors.SUCCESS)
+            self._action_btn.configure(
+                text="↑ Push",
+                fg_color=Colors.BG_ELEVATED,
+                hover_color=Colors.BG_TERTIARY,
             )
 
-        # Status frame: only toggle grid when visibility actually changes
-        should_show = (state != "synced")
-        if should_show != self._status_frame_visible:
-            self._status_frame_visible = should_show
-            if should_show:
-                self._status_frame.grid(row=1, column=0, sticky="ew", padx=Spacing.LG, pady=(0, Spacing.XS))
-            else:
-                self._status_frame.grid_remove()
+        elif state == "needs_push":
+            detail = status.label or "pending changes"
+            self._status_label.configure(
+                text=f"{icon} {detail}", text_color=Colors.WARNING)
+            self._action_btn.configure(
+                text="↑ Push",
+                fg_color=Colors.ACCENT,
+                hover_color=Colors.ACCENT_HOVER,
+            )
 
-        if should_show:
-            if state == "conflict":
-                self._status_label.configure(
-                    text=f"{status.conflicts} conflict{'s' if status.conflicts != 1 else ''}",
-                    text_color=Colors.ERROR,
-                )
-            elif state == "error":
-                short_err = (status.error or status.label)[:80]
-                self._status_label.configure(text=short_err, text_color=Colors.ERROR)
-            elif state == "not_init":
-                self._status_label.configure(
-                    text="Not a git repo — run git init + add remote",
-                    text_color=Colors.TEXT_TERTIARY,
-                )
-            else:
-                self._status_label.configure(text=status.label or "", text_color=Colors.TEXT_SECONDARY)
+        elif state == "needs_pull":
+            detail = status.label or f"{status.behind} behind"
+            self._status_label.configure(
+                text=f"{icon} {detail}", text_color=Colors.INFO)
+            self._action_btn.configure(
+                text="↓ Pull",
+                fg_color=Colors.INFO,
+                hover_color="#3A6EA8",
+            )
 
-        self._update_badges(status)
-        self._update_button_layout(state, status.has_conflicts)
+        elif state == "diverged":
+            detail = status.label or "diverged"
+            self._status_label.configure(
+                text=f"{icon} {detail}", text_color=Colors.WARNING)
+            self._action_btn.configure(
+                text="↑ Push",
+                fg_color=Colors.WARNING,
+                hover_color="#C48820",
+            )
 
-        # Accent dot color
-        dot_color_map = {
-            "synced":     Colors.SUCCESS,
-            "conflict":   Colors.ERROR,
-            "error":      Colors.ERROR,
-            "needs_push": Colors.WARNING,
-            "diverged":   Colors.WARNING,
-            "needs_pull": Colors.ACCENT,
-        }
-        self._accent_dot.configure(
-            text="●",
-            text_color=dot_color_map.get(state, Colors.TEXT_TERTIARY),
-        )
+        elif state == "conflict":
+            n = status.conflicts
+            self._status_label.configure(
+                text=f"{icon} {n} conflict{'s' if n != 1 else ''}",
+                text_color=Colors.ERROR,
+            )
+            self._action_btn.configure(
+                text="⚠ Resolve",
+                fg_color=Colors.ERROR,
+                hover_color="#C04040",
+            )
 
-        self._apply_border_for_state()
+        elif state == "error":
+            short = (status.error or status.label)[:60]
+            self._status_label.configure(
+                text=f"{icon} {short}", text_color=Colors.ERROR)
+            self._action_btn.configure(
+                text="↑ Push",
+                fg_color=Colors.BG_ELEVATED,
+                hover_color=Colors.BG_TERTIARY,
+            )
+
+        elif state == "not_init":
+            self._status_label.configure(
+                text="Not initialized", text_color=Colors.TEXT_TERTIARY)
+            self._action_btn.configure(
+                text="Init",
+                fg_color=Colors.BG_ELEVATED,
+                hover_color=Colors.BG_TERTIARY,
+            )
+
+        else:
+            self._status_label.configure(
+                text=status.label or "Checking…",
+                text_color=Colors.TEXT_SECONDARY,
+            )
 
         if state != "checking":
             self._stop_spinner()
-
-        # Clear old inline error if status changed
         if state not in ("error",) and self._error_msg:
             self.set_error("")
 
-    def _update_badges(self, status: RepoStatus) -> None:
-        badges: list[tuple[str, str]] = []
-        if status.staged > 0:
-            badges.append((f"↑{status.staged}", Colors.ACCENT))
-        if status.untracked > 0:
-            badges.append((f"+{status.untracked}", Colors.SUCCESS))
-        if status.modified > 0:
-            badges.append((f"~{status.modified}", Colors.WARNING))
-        if status.deleted > 0:
-            badges.append((f"-{status.deleted}", Colors.ERROR))
-        if status.ahead > 0:
-            badges.append((f"↑{status.ahead}↑", Colors.INFO))
-        if status.behind > 0:
-            badges.append((f"↓{status.behind}", Colors.INFO))
-
-        # Skip rebuild if badges haven't changed
-        if self._last_badges == badges:
-            return
-        self._last_badges = badges
-
-        for w in self._badges_frame.winfo_children():
-            w.destroy()
-        for text, color in badges:
-            PillBadge(self._badges_frame, text, color).pack(side="left", padx=(Spacing.XS, 0))
-
-    def _update_button_layout(self, state: str, has_conflicts: bool) -> None:
-        key = (state, has_conflicts)
-
-        # Skip re-layout if button config hasn't changed
-        if self._last_btn_key == key:
-            return
-        self._last_btn_key = key
-
-        self._push_btn.pack_forget()
-        self._pull_btn.pack_forget()
-        self._changes_btn.pack_forget()
-        self._conflict_btn.pack_forget()
-
-        if has_conflicts:
-            self._conflict_btn.pack(side="left", padx=(0, Spacing.XS))
-            self._changes_btn.pack(side="left", padx=(0, Spacing.XS))
-        else:
-            self._push_btn.pack(side="left", padx=(0, Spacing.XS))
-            self._pull_btn.pack(side="left", padx=(0, Spacing.XS))
-            self._changes_btn.pack(side="left", padx=(0, Spacing.XS))
-
     def set_push_success(self, msg: str) -> None:
-        """Show a temporary success banner on the card for ~8 seconds."""
-        self._status_label.configure(text=f"✓  {msg}", text_color=Colors.SUCCESS)
-        self._accent_dot.configure(text="●", text_color=Colors.SUCCESS)
-        # Restore real status after 8 s
-        self.after(8000, self._restore_status_display)
+        self._status_label.configure(text=f"✓ {msg}", text_color=Colors.SUCCESS)
+        self.after(8000, self._restore_status)
 
-    def _restore_status_display(self) -> None:
-        """Revert the card display back to the cached git status."""
-        # Reset caches so update_status re-applies everything cleanly after the banner
-        self._last_btn_key = None
-        self._last_badges = None
-        self._status_frame_visible = None
+    def _restore_status(self) -> None:
         self.update_status(self.status)
 
     def set_error(self, msg: str) -> None:
-        """Show or hide the inline error banner."""
         self._error_msg = msg
         if msg:
-            self._error_label.configure(text=f"✗  {msg[:120]}")
-            self._error_frame.grid(row=3, column=0, sticky="ew", padx=Spacing.MD, pady=(0, Spacing.XS))
+            self._error_label.configure(text=msg[:100])
+            self._error_frame.pack(side="bottom", fill="x")
+            self.configure(height=self.CARD_H + 20)
         else:
-            self._error_frame.grid_forget()
+            self._error_frame.pack_forget()
+            self.configure(height=self.CARD_H)
 
     def show_progress(self, value: float) -> None:
         if not self._progress.winfo_ismapped():
-            self._progress.grid(row=4, column=0, sticky="ew", padx=0, pady=0)
+            self._progress.pack(side="bottom", fill="x")
         self._progress.set(value)
 
     def hide_progress(self) -> None:
         if self._progress.winfo_ismapped():
-            self._progress.grid_forget()
+            self._progress.pack_forget()
 
     def set_checking(self, checking: bool) -> None:
         self._checking = checking
         if checking:
             self._start_spinner()
-            self._status_label.configure(text="Checking…", text_color=Colors.TEXT_SECONDARY)
-            # Clear badges only if there are any to avoid unnecessary redraws
-            if self._badges_frame.winfo_children():
-                for w in self._badges_frame.winfo_children():
-                    w.destroy()
-                self._last_badges = []
+            self._status_label.configure(
+                text="Checking…", text_color=Colors.TEXT_SECONDARY)
         else:
             self._stop_spinner()
 
     def _start_spinner(self) -> None:
         if self._spinner_after_id:
             self.after_cancel(self._spinner_after_id)
-        frames = ["●", "○", "●", "○"]
-        self._spinner_angle = (self._spinner_angle + 1) % len(frames)
-        self._accent_dot.configure(text=frames[self._spinner_angle], text_color=Colors.ACCENT)
-        self._spinner_after_id = self.after(400, self._start_spinner)
+        chars = ["·", "•", "●", "•"]
+        self._spinner_angle = (self._spinner_angle + 1) % len(chars)
+        self._status_label.configure(
+            text=f"{chars[self._spinner_angle]} Checking…",
+            text_color=Colors.TEXT_SECONDARY,
+        )
+        self._spinner_after_id = self.after(350, self._start_spinner)
 
     def _stop_spinner(self) -> None:
         if self._spinner_after_id:
             self.after_cancel(self._spinner_after_id)
             self._spinner_after_id = None
-        self._accent_dot.configure(text="●")
 
-    def _on_push(self) -> None:
-        self.app.push_repo(self.repo)
+    # ── Actions ───────────────────────────────────────────────────
 
-    def _on_pull(self) -> None:
-        self.app.pull_repo(self.repo)
+    def _on_action(self) -> None:
+        state = self.status.state
+        if state == SyncState.NEEDS_PULL:
+            self.app.pull_repo(self.repo)
+        elif state == SyncState.CONFLICT:
+            self.app.show_conflict_dialog(self.repo)
+        else:
+            self.app.push_repo(self.repo)
 
-    def _on_changes(self) -> None:
+    def _on_click(self, _=None) -> None:
         self.app.show_staging_panel(self.repo)
-
-    def _on_resolve(self) -> None:
-        self.app.show_conflict_dialog(self.repo)
 
     def _on_open_folder(self) -> None:
         try:
             subprocess.Popen(["explorer", self.repo.path], creationflags=0x08000000)
         except Exception:
             pass
+
+    # ── Context menu ──────────────────────────────────────────────
+
+    def _show_context_menu(self, event=None) -> None:
+        menu = tk.Menu(
+            self, tearoff=0,
+            bg=Colors.BG_ELEVATED, fg=Colors.TEXT_PRIMARY,
+            activebackground=Colors.ACCENT, activeforeground="#FFFFFF",
+            font=("Segoe UI Variable", 10), relief="flat", bd=0,
+        )
+        menu.add_command(label="↑  Push",        command=lambda: self.app.push_repo(self.repo))
+        menu.add_command(label="↓  Pull",        command=lambda: self.app.pull_repo(self.repo))
+        menu.add_separator()
+        menu.add_command(label="≡  View Changes",   command=lambda: self.app.show_staging_panel(self.repo))
+        menu.add_command(label="⏳  History",        command=lambda: self.app.show_history_panel(self.repo))
+        menu.add_command(label="📦  Stash",          command=lambda: self.app.show_stash_panel(self.repo))
+        menu.add_separator()
+        menu.add_command(label="↗  Open Folder",    command=self._on_open_folder)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()

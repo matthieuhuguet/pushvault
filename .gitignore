@@ -7,3 +7,16 @@ __pycache__/
 dist/
 build/
 .env
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Tauri build artifacts
+src-tauri/target/
+
+# Vite / frontend build
+dist/
+
+# Rust
+*.rs.bk

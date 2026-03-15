@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import os
 import subprocess
+import unicodedata
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
 
+from . import chunk_engine
 from .models import (
     ConflictFile,
     ConflictHunk,
@@ -271,6 +273,10 @@ def get_status(repo: RepoConfig, log: Optional[LogFn] = None) -> RepoStatus:
     status.deleted = deleted
     status.conflicts = conflicts
 
+    r_log = _run(["git", "log", "--format=%cr", "-1"], cwd=path, timeout=10)
+    if r_log.returncode == 0 and r_log.stdout.strip():
+        status.last_commit_time = r_log.stdout.strip()
+
     if conflicts > 0:
         status.state = SyncState.CONFLICT
         status.label = f"{conflicts} conflict{'s' if conflicts != 1 else ''}"
@@ -406,9 +412,11 @@ _SKIP_EXTENSIONS: frozenset[str] = frozenset({
     ".nul",
 })
 
-# Top-level directory names whose entire subtree is always skipped
+# Top-level directory names whose entire subtree is always skipped.
+# Compared case-insensitively (Windows filenames are case-insensitive).
 _SKIP_TOP_DIRS: frozenset[str] = frozenset({
-    ".claude",   # Claude Code config, memory, worktrees
+    ".claude",    # Claude Code config, memory, worktrees
+    "downloads",  # May contain personal/sensitive files — never push
 })
 
 _CHUNK_PART_MB = 49         # Each zip chunk stays ≤ this size
@@ -505,7 +513,7 @@ def _ensure_file_chunks(
     return new_rel_paths, old_rel_paths
 
 
-# ── Push — safe temp-index approach ─────────────────────────────
+# ── Eligible file collection ─────────────────────────────────────
 
 def _collect_eligible_files(
     path: str, max_bytes: int, log: Optional[LogFn] = None
@@ -546,9 +554,9 @@ def _collect_eligible_files(
         if " -> " in filepath:
             filepath = filepath.split(" -> ")[-1]
 
-        # ── Skip .claude/ and other blacklisted top-level dirs ──
+        # ── Skip .claude/, downloads/, and other blacklisted dirs ──
         top = filepath.split("/")[0].split("\\")[0]
-        if top in _SKIP_TOP_DIRS:
+        if top.lower() in _SKIP_TOP_DIRS:
             continue
 
         # ── Skip files inside linked worktrees ──────────────────
@@ -610,6 +618,7 @@ def commit_push(
     batch_size: int = 50,
     log: Optional[LogFn] = None,
     progress: Optional[Callable[[int, int, str], None]] = None,
+    custom_message: str = "",
 ) -> tuple[bool, str]:
     """
     Single-branch push to the default branch (main/master).
@@ -618,9 +627,12 @@ def commit_push(
       1. Ensure checked-out on default branch
       2. Fetch remote
       3. Pull if behind (fail fast on conflict)
-      4. Stage eligible files in batches
-      5. Commit
-      6. Push to origin/<default>
+      4. Pre-process large files (filesystem scan, git-independent)
+      5. Reset index
+      6. Collect eligible files
+      7. Stage in batches
+      8. Commit
+      9. Push to origin/<default>
 
     Files above max_file_size_mb are split into 49 MB zip chunks in .pv_chunks/
     (max ~200 parts per file for a 10 GB limit).
@@ -678,12 +690,24 @@ def commit_push(
             if log:
                 log("warning", f"Pull warning: {stderr[:120]}")
 
-    # ── 4. Reset index ────────────────────────────────────────────
+    # ── 4. Pre-process large files (filesystem scan, git-independent) ───
+    # Scans the working tree for files > 49 MB, creates/updates zip chunks
+    # in .pv_chunks/, and appends originals to .gitignore so git-status
+    # never has to enumerate multi-GB blobs (the main cause of timeouts).
+    # Skip the Downloads repo — may contain personal/sensitive files.
+    if Path(path).name.lower() != "downloads":
+        chunk_engine.pre_process_large_files(path, log)
+
+    # ── 5. Reset index ────────────────────────────────────────────
     _run(["git", "reset", "HEAD"], cwd=path, timeout=60)
 
-    # ── 5. Collect eligible files ─────────────────────────────────
+    # ── 6. Collect eligible files ─────────────────────────────────
     max_bytes = max_file_size_mb * 1_048_576
     eligible, skipped, chunks_to_remove = _collect_eligible_files(path, max_bytes, log)
+
+    # Rename any files with accented/non-ASCII names before staging
+    if any(ord(c) > 127 for f in eligible for c in f):
+        eligible = _rename_accented(path, eligible, log)
 
     for stale in chunks_to_remove:
         _run(["git", "rm", "--cached", "--ignore-unmatch", "--", stale], cwd=path, timeout=30)
@@ -699,7 +723,7 @@ def commit_push(
     if log:
         log("info", f"{repo.name}: staging {total} file(s)…")
 
-    # ── 6. Stage in batches ───────────────────────────────────────
+    # ── 7. Stage in batches ───────────────────────────────────────
     total_batches = (total + batch_size - 1) // batch_size
     for i in range(total_batches):
         start = i * batch_size
@@ -718,11 +742,14 @@ def commit_push(
         for f in to_remove:
             _run(["git", "rm", "--cached", "--ignore-unmatch", "--", f], cwd=path, timeout=30)
 
-    # ── 7. Commit ─────────────────────────────────────────────────
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-    commit_msg = f"[PushVault] {now_str} — {total} file(s)"
-    if skipped:
-        commit_msg += f" ({skipped} oversized skipped)"
+    # ── 8. Commit ─────────────────────────────────────────────────
+    if custom_message:
+        commit_msg = custom_message
+    else:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+        commit_msg = f"[PushVault] {now_str} \u2014 {total} file(s)"
+        if skipped:
+            commit_msg += f" ({skipped} oversized skipped)"
 
     if progress:
         progress(total, total, "Committing…")
@@ -737,7 +764,7 @@ def commit_push(
         if log:
             log("info", "Nothing new to commit — pushing existing commits")
 
-    # ── 8. Push ───────────────────────────────────────────────────
+    # ── 9. Push ───────────────────────────────────────────────────
     if log:
         log("info", f"Pushing to {default}…")
     if progress:
@@ -766,8 +793,51 @@ def commit_push(
 
 # ── Staging area operations ──────────────────────────────────────
 
+def _sanitize_name(name: str) -> str:
+    """Strip accents and non-ASCII chars from a single filename component."""
+    result = unicodedata.normalize("NFD", name).encode("ascii", "ignore").decode("ascii").strip()
+    return result if result else name  # fallback: don't empty the name
+
+
+def _rename_accented(repo_path: str, rel_paths: list[str], log: Optional[LogFn] = None) -> list[str]:
+    """Rename any file whose path contains non-ASCII chars to ASCII equivalent.
+    Returns updated list of relative paths."""
+    out = []
+    for rel in rel_paths:
+        p = Path(rel)
+        new_parts = [_sanitize_name(part) for part in p.parts]
+        new_rel = "/".join(new_parts)  # git always uses forward slashes
+
+        if new_rel == rel or not any(ord(c) > 127 for c in rel):
+            out.append(rel)
+            continue
+
+        old_abs = Path(repo_path) / Path(rel)
+        new_abs = Path(repo_path) / Path(new_rel)
+
+        if not old_abs.exists():
+            out.append(new_rel)
+            continue
+        if new_abs.exists():
+            out.append(rel)  # target already exists, keep original
+            continue
+
+        try:
+            new_abs.parent.mkdir(parents=True, exist_ok=True)
+            old_abs.rename(new_abs)
+            if log:
+                log("info", f"Renamed (accent): {rel} → {new_rel}")
+            out.append(new_rel)
+        except Exception as exc:
+            if log:
+                log("warning", f"Rename failed {rel}: {exc}")
+            out.append(rel)
+    return out
+
+
 def stage_file(repo_path: str, filepath: str, log: Optional[LogFn] = None) -> tuple[bool, str]:
-    """Stage a file."""
+    """Stage a file, renaming accented characters in its path first."""
+    filepath = _rename_accented(repo_path, [filepath], log)[0]
     r = _run(["git", "add", "--", filepath], cwd=repo_path, timeout=30)
     if r.returncode != 0:
         return False, r.stderr.strip()
@@ -829,7 +899,14 @@ def get_diff(repo_path: str, filepath: str, staged: bool = False) -> str:
 
 
 def stage_all(repo_path: str, log: Optional[LogFn] = None) -> tuple[bool, str]:
-    """Stage all changes (equivalent to git add -A)."""
+    """Stage all changes, renaming accented filenames first."""
+    # Find untracked files with non-ASCII names and rename them before staging
+    r_ls = _run(["git", "ls-files", "--others", "--exclude-standard", "-z"],
+                cwd=repo_path, timeout=30)
+    if r_ls.returncode == 0 and r_ls.stdout:
+        untracked = [f for f in r_ls.stdout.split("\0") if f and any(ord(c) > 127 for c in f)]
+        if untracked:
+            _rename_accented(repo_path, untracked, log)
     r = _run(["git", "add", "-A"], cwd=repo_path, timeout=60)
     if r.returncode != 0:
         return False, r.stderr.strip()

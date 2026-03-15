@@ -1,188 +1,132 @@
-# PushVault
+# PushVault v4.0.0
 
-**Windows utility widget — automatic multi-repo backup to GitHub**
-
----
-
-> One badly phrased prompt can erase weeks of work.
-> While editing a file with an AI coding agent, I lost an entire project tree — PNG and JPEG assets, gone, unrecoverable.
-> If you work with AI agents on heavy projects (3D assets, EXR textures, Houdini / UE5 pipelines), this tool is for you.
-
----
-
-## What it does
-
-A minimal Windows widget that monitors multiple local folders and syncs them to GitHub — fetch, pull, push — all from a single interface.
-
-- **Multi-repo** — watch several folders simultaneously, unlike GitHub Desktop
-- **One-click sync** — push everything at once with Sync All
-- **Daily archive branches** — each day creates a new `archive/YYYY-MM-DD` branch automatically, giving you granular history
-- **Built for heavy assets** — 80 MB per-file limit, enough for EXR and large textures while staying under GitHub's rejection threshold
-- **Batch push** — large folders are split into 50-file commits to avoid timeouts and pack-size errors
-- **Conflict resolution** — GitHub Desktop-grade merge conflict UI with side-by-side diff viewer
-- **Encoding-safe** — handles accented filenames and non-ASCII paths correctly on French/European Windows
-- **System tray** — lives in the taskbar, launches at startup, stays out of the way
+**Multi-repository Git manager built for creatives and engineers.**
+Track, sync, and push all your projects from one beautiful Spotify-dark dashboard.
 
 ---
 
 ## Architecture
 
+**PushVault v4** is a complete rewrite using **Tauri 2.0 + Rust + React/TypeScript**.
+
 ```
-pushvault/
-    __init__.py         # Package version
-    models.py           # Data classes (RepoConfig, RepoStatus, ConflictFile, etc.)
-    config.py           # JSON config loader/validator
-    git_engine.py       # All git operations (status, fetch, pull, push, conflicts)
-    theme.py            # Design system (colors, fonts, spacing)
-    tray.py             # System tray integration (pystray)
-    ui_main.py          # Main window — repo dashboard
-    ui_card.py          # Repo card widget with status badges
-    ui_conflicts.py     # Conflict resolution dialog + side-by-side diff viewer
-app.py                  # Entry point
-config.json             # Repo configuration
-launch.bat              # Silent launcher
+┌─────────────────────────────────────────────┐
+│  React 18 + TypeScript (WebView frontend)   │
+│  Zustand state · Vite bundler               │
+├─────────────────────────────────────────────┤
+│         Tauri 2.0 IPC Bridge                │
+│  50+ typed commands · progress events       │
+├─────────────────────────────────────────────┤
+│     Rust Backend (src-tauri/src/)           │
+│  libgit2 (git2 crate) · tokio async         │
+│  spawn_blocking for all git ops             │
+└─────────────────────────────────────────────┘
 ```
 
----
+## Features
 
-## Setup — under 10 minutes
+### Core Git Engine (Rust + libgit2)
+- **Status**: Full porcelain v2 parsing — staged, modified, untracked, deleted, ahead/behind, conflicts
+- **Fetch / Pull / Push** with credential helper & SSH agent support
+- **Sync All**: parallel sync with Tauri progress events
+- **Staging**: stage/unstage/discard by file or all; status icons per type
+- **Commit**: amend, conventional commits autocomplete, secret detection
+- **Diff**: staged or working-tree; unified format with stats
+- **History**: full log with inline diffs, cherry-pick, revert, reset
+- **Stash**: save (with message + untracked), apply, pop, drop, clear
+- **Clone**: with progress and auto-add to config
 
-### Prerequisites
+### Branch Management
+- List local + remote branches with ahead/behind counts
+- Create, switch, delete branches
 
-- Python 3.10+
-- Git installed and on PATH
-- A GitHub account with repos already created for each folder you want to sync
+### Conflict Resolution
+- Detect conflict type (both-modified, deleted-by-us/them)
+- Use Ours / Use Theirs per file · Abort merge · Commit merge
 
-### Install dependencies
+### Tag Management
+- List lightweight and annotated tags
+- Create / delete tags
+
+### Advanced Git Operations
+- **Reset**: soft / mixed / hard to any commit
+- **Revert**: create revert commit
+- **Cherry-pick**: apply single commit
+- **Remote URL**: detect GitHub URL for "View on GitHub"
+
+### Multi-Repo Dashboard
+- Spotify-style album card grid, responsive columns
+- Live status: staged/modified/untracked/deleted counts, ahead/behind
+- Human-readable status text
+- Filter pills: All · Needs Push · Needs Pull · Synced · Conflicts · Errors
+- Search by repo name · right-click context menu
+
+### GitHub Integration
+- Connect with Personal Access Token (PAT)
+- View account info and all repos · filter and search
+- One-click Clone + auto-add to PushVault
+
+### File Management
+- Large files auto-chunked into 49 MB zip parts (`.pv_chunks/`)
+- SHA-256 integrity per chunk
+- Secret detection in commit messages (API keys, tokens, passwords)
+
+### User Interface
+- **Spotify-dark** design: `#000` sidebar · `#121212` content · `#1DB954` green
+- Onboarding wizard for first run
+- Keyboard shortcuts (Ctrl+S sync, Ctrl+K search, Ctrl+/ help)
+- Conventional commits autocomplete
+- Toast notifications · Activity log
+- Branch manager · Conflict resolver · Stash manager · Tag manager
+- `.gitignore` editor with quick-add patterns
+- Scan folder for repos (bulk add)
+- Clone dialog · Settings
+
+### System Integration
+- **System tray**: minimize to tray, toggle show/hide
+- **Auto-fetch** at configurable interval (1–60 min)
+- **Config migration** from Python v3 `config.json`
+- Open in Explorer / VS Code / Terminal
+- Windows Credential Manager (via git credential helper)
+
+## Build
+
+**Prerequisites:** Rust 1.70+ · Node.js 18+ · Git
 
 ```bash
-pip install customtkinter pillow pystray
+npm install
+npm run tauri dev      # development (hot reload)
+npm run tauri build    # production — MSI + NSIS installers
 ```
 
-### Configure
+**Output:** `src-tauri/target/release/bundle/`
 
-Edit `config.json` to point to your folders:
+## Config
 
-```json
-{
-  "repos": [
-    {
-      "name": "MyProject",
-      "path": "C:\\Users\\you\\Projects\\MyProject",
-      "remote": "https://github.com/you/my-project.git",
-      "icon": "brain",
-      "color": "#A78BFA"
-    }
-  ],
-  "auto_check_interval_minutes": 5,
-  "max_file_size_mb": 80,
-  "batch_size": 50,
-  "window": {
-    "width": 400,
-    "height": 860
-  }
-}
-```
+Stored at `%AppData%\pushvault\config.json`. Legacy Python config auto-migrated on first launch.
 
-Each folder must already be initialized as a git repo with a remote set:
-
-```bash
-cd C:\Users\you\Projects\MyProject
-git init
-git remote add origin https://github.com/you/my-project.git
-```
-
-### Run
-
-```bash
-python app.py
-```
-
-Or double-click `launch.bat` to run silently in the background.
-
-### Auto-start with Windows
-
-Drop a shortcut to `launch.bat` in:
+## Project Structure
 
 ```
-C:\Users\<you>\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\
+├── src/                    # React/TypeScript frontend
+│   ├── App.tsx             # Root, keyboard bindings, overlay routing
+│   ├── components/         # 25+ UI modules
+│   ├── store/              # Zustand stores
+│   ├── lib/ipc.ts          # 50+ typed Tauri commands
+│   └── types/index.ts      # Shared TypeScript types
+├── src-tauri/              # Rust backend
+│   ├── src/
+│   │   ├── git_engine.rs   # All git ops (libgit2, 1000+ lines)
+│   │   ├── chunk_engine.rs # Large file chunking
+│   │   ├── config.rs       # JSON config + legacy migration
+│   │   ├── models.rs       # Data structures
+│   │   ├── commands/       # Tauri IPC (git, config, system)
+│   │   └── lib.rs          # Tauri builder, tray, window events
+│   └── tauri.conf.json
+├── pushvault/              # Legacy Python v3 (reference)
+└── docs/                   # VISION.md, ROADMAP.md
 ```
 
 ---
 
-## Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `Ctrl+S` | Sync All repos |
-| `Ctrl+R` | Refresh all statuses |
-| `Ctrl+L` | Toggle activity log |
-| `Escape` | Minimize to tray |
-
----
-
-## Conflict Resolution
-
-When a pull creates merge conflicts, the **Resolve** button appears on the affected repo card. Clicking it opens a full conflict resolution dialog inspired by GitHub Desktop:
-
-- **File list** on the left shows all conflicted files with type badges
-- **Side-by-side diff viewer** on the right shows ours vs theirs with color-coded highlights
-- **Per-file resolution**: Use Ours / Use Theirs / Open in Editor / Mark Resolved
-- **Undo** any resolution before committing
-- **Commit Resolution** when all conflicts are resolved
-- **Abort Merge** to cancel the entire merge
-
----
-
-## Config reference
-
-| Key | Default | Description |
-|-----|---------|-------------|
-| `name` | — | Display name in the widget |
-| `path` | — | Absolute path to the local folder |
-| `remote` | — | GitHub remote URL (HTTPS or SSH) |
-| `icon` | `"folder"` | Badge icon: `brain`, `camera`, `download`, `portfolio`, `code`, `art`, `music`, `video`, `game`, `book`, `star` |
-| `color` | `"#7C5CBF"` | Accent color for the card |
-| `auto_check_interval_minutes` | `5` | How often to auto-refresh status |
-| `max_file_size_mb` | `80` | Files larger than this are skipped |
-| `batch_size` | `50` | Files per commit during batch push |
-
----
-
-## How push works
-
-1. Detects all untracked and modified files under the size limit
-2. Splits them into batches of 50 files
-3. Commits and pushes each batch to `archive/YYYY-MM-DD` on the remote
-4. If the daily branch already exists, force-pushes the new batch on top
-
-Your `main` branch stays clean. Archive branches hold daily snapshots.
-
----
-
-## Known limitations
-
-- Windows only (uses `explorer.exe` for folder opening, tray relies on `pystray`)
-- Requires git to be configured with credentials (HTTPS token or SSH key) before first push
-- Files above 80 MB are silently skipped — GitHub rejects individual files above 100 MB
-
----
-
-## AI-assisted setup
-
-Open this folder in **Claude Code**, **Cursor**, or **Windsurf** and ask the agent to configure it:
-
-```
-Set up PushVault for my environment. I want to track these folders: [list them].
-Create the git repos on GitHub and configure config.json.
-```
-
----
-
-## License
-
-MIT — do whatever you want with it.
-
----
-
-*Built after losing a full UE5 project to an AI agent mishap. Back up your assets.*
+*PushVault v4.0.0 — Tauri 2.0 · Rust · React/TypeScript · libgit2*
