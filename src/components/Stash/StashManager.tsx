@@ -144,7 +144,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.8)",
+        background: "var(--overlay-backdrop)",
         backdropFilter: "blur(6px)",
         zIndex: 600,
         display: "flex",
@@ -197,7 +197,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
               width: "32px",
               height: "32px",
               borderRadius: "50%",
-              background: "rgba(255,255,255,0.08)",
+              background: "var(--overlay-light)",
               border: "none",
               color: "var(--color-text-secondary)",
               cursor: "pointer",
@@ -209,12 +209,12 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
               transition: "background 120ms ease, color 120ms ease",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.15)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-strong)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
             }}
           >
             ✕
@@ -257,7 +257,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
             }
             onBlur={(e) =>
               ((e.target as HTMLInputElement).style.borderColor =
-                "rgba(255,255,255,0.1)")
+                "var(--overlay-light)")
             }
           />
           <div
@@ -363,7 +363,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
                       alignItems: "flex-start",
                       gap: "12px",
                       padding: "12px 24px",
-                      borderBottom: isExpanded ? "none" : "1px solid rgba(255,255,255,0.04)",
+                      borderBottom: isExpanded ? "none" : "1px solid var(--overlay-soft)",
                       background: isExpanded ? "rgba(255,255,255,0.02)" : "transparent",
                     }}
                   >
@@ -373,7 +373,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
                         fontSize: "11px",
                         fontWeight: 700,
                         color: "var(--color-text-muted)",
-                        background: "rgba(255,255,255,0.06)",
+                        background: "var(--overlay-subtle)",
                         borderRadius: "8px",
                         padding: "2px 8px",
                         flexShrink: 0,
@@ -417,19 +417,19 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
                             fontSize: "11px",
                             fontWeight: 600,
                             color: isExpanded ? "#f59b00" : "#b3b3b3",
-                            background: isExpanded ? "rgba(245,155,0,0.12)" : "rgba(255,255,255,0.06)",
-                            border: `1px solid ${isExpanded ? "rgba(245,155,0,0.3)" : "rgba(255,255,255,0.1)"}`,
+                            background: isExpanded ? "rgba(245,155,0,0.12)" : "var(--overlay-subtle)",
+                            border: `1px solid ${isExpanded ? "rgba(245,155,0,0.3)" : "var(--overlay-light)"}`,
                             borderRadius: "8px",
                             cursor: "pointer",
                             transition: "all 120ms ease",
                           }}
                           onMouseEnter={(e) => {
                             if (!isExpanded)
-                              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
+                              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-medium)";
                           }}
                           onMouseLeave={(e) => {
                             if (!isExpanded)
-                              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+                              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
                           }}
                         >
                           {isExpanded ? "▲ Hide" : "▼ Diff"}
@@ -505,7 +505,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
                         </div>
                       ) : stashDiff ? (
                         <>
-                          <div style={{ padding: "5px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", display: "flex", gap: "12px", fontSize: "11px", background: "var(--color-bg-card)" }}>
+                          <div style={{ padding: "5px 16px", borderBottom: "1px solid var(--overlay-soft)", display: "flex", gap: "12px", fontSize: "11px", background: "var(--color-bg-card)" }}>
                             <span style={{ color: "#1DB954" }}>+{stashDiff.additions}</span>
                             <span style={{ color: "#e5534b" }}>−{stashDiff.deletions}</span>
                           </div>

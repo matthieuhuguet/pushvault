@@ -99,7 +99,7 @@ export function ScanRepos({ onClose }: Props) {
                 const parts = p.replace(/\\/g, "/").split("/");
                 const name = parts[parts.length - 1] || p;
                 return (
-                  <label key={p} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 0", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <label key={p} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 0", cursor: "pointer", borderBottom: "1px solid var(--overlay-soft)" }}>
                     <input type="checkbox" checked={selected.has(p)} onChange={() => toggle(p)} style={{ accentColor: "#1DB954" }} />
                     <div>
                       <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--color-text-primary)" }}>{name}</p>

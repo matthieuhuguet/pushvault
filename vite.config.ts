@@ -11,4 +11,13 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "zustand", "react-virtuoso"],
+        },
+      },
+    },
+  },
 }));

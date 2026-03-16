@@ -317,7 +317,7 @@ export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onSho
           width: "560px",
           maxWidth: "90vw",
           boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
-          border: "1px solid rgba(255,255,255,0.08)",
+          border: "1px solid var(--overlay-light)",
           overflow: "hidden",
         }}
       >

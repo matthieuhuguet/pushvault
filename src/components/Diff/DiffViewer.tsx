@@ -254,7 +254,7 @@ function DiffMinimap({ lines, scrollContainerRef, searchQuery }: DiffMinimapProp
         flexShrink: 0,
         position: "relative",
         cursor: "pointer",
-        borderLeft: "1px solid rgba(255,255,255,0.04)",
+        borderLeft: "1px solid var(--overlay-soft)",
         overflow: "hidden",
         background: "var(--color-bg-card)",
       }}
@@ -271,8 +271,8 @@ function DiffMinimap({ lines, scrollContainerRef, searchQuery }: DiffMinimapProp
           left: 0,
           right: 0,
           height: thumbStyle.height,
-          background: "rgba(255,255,255,0.09)",
-          border: "1px solid rgba(255,255,255,0.18)",
+          background: "var(--overlay-light)",
+          border: "1px solid var(--overlay-vivid)",
           boxSizing: "border-box",
           pointerEvents: "none",
           borderRadius: "1px",
@@ -456,8 +456,8 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
               fontSize: "10px",
               fontWeight: 600,
               color: copied ? "#1DB954" : "#b3b3b3",
-              background: copied ? "rgba(29,185,84,0.1)" : "rgba(255,255,255,0.06)",
-              border: `1px solid ${copied ? "rgba(29,185,84,0.3)" : "rgba(255,255,255,0.1)"}`,
+              background: copied ? "rgba(29,185,84,0.1)" : "var(--overlay-subtle)",
+              border: `1px solid ${copied ? "rgba(29,185,84,0.3)" : "var(--overlay-light)"}`,
               borderRadius: "8px",
               cursor: "pointer",
               transition: "all 120ms ease",
@@ -480,14 +480,14 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
                 fontSize: "10px",
                 fontWeight: 600,
                 color: "var(--color-text-secondary)",
-                background: "rgba(255,255,255,0.06)",
+                background: "var(--overlay-subtle)",
                 border: "1px solid var(--color-border)",
                 borderRadius: "8px",
                 cursor: "pointer",
                 transition: "all 120ms ease",
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#fff"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3"; }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)"; }}
             >
               ⎈ Open
             </button>
@@ -541,8 +541,8 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
               fontSize: "10px",
               fontWeight: 700,
               color: showSearch ? "#f5a623" : "#b3b3b3",
-              background: showSearch ? "rgba(245,166,35,0.12)" : "rgba(255,255,255,0.06)",
-              border: `1px solid ${showSearch ? "rgba(245,166,35,0.3)" : "rgba(255,255,255,0.1)"}`,
+              background: showSearch ? "rgba(245,166,35,0.12)" : "var(--overlay-subtle)",
+              border: `1px solid ${showSearch ? "rgba(245,166,35,0.3)" : "var(--overlay-light)"}`,
               borderRadius: "8px",
               cursor: "pointer",
               transition: "all 120ms ease",
@@ -559,17 +559,17 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
               fontSize: "10px",
               fontWeight: 700,
               color: sideBySide ? "#1DB954" : "#b3b3b3",
-              background: sideBySide ? "rgba(29,185,84,0.12)" : "rgba(255,255,255,0.06)",
-              border: `1px solid ${sideBySide ? "rgba(29,185,84,0.3)" : "rgba(255,255,255,0.1)"}`,
+              background: sideBySide ? "rgba(29,185,84,0.12)" : "var(--overlay-subtle)",
+              border: `1px solid ${sideBySide ? "rgba(29,185,84,0.3)" : "var(--overlay-light)"}`,
               borderRadius: "8px",
               cursor: "pointer",
               transition: "all 120ms ease",
             }}
             onMouseEnter={(e) => {
-              if (!sideBySide) (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+              if (!sideBySide) (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
             }}
             onMouseLeave={(e) => {
-              if (!sideBySide) (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+              if (!sideBySide) (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
             }}
           >
             {sideBySide ? "⬛⬛ Unified" : "⬜⬜ Split"}
@@ -635,7 +635,7 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
               flex: 1,
               overflowY: "auto",
               overflowX: "auto",
-              borderRight: "1px solid rgba(255,255,255,0.06)",
+              borderRight: "1px solid var(--overlay-subtle)",
             }}
           >
             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
@@ -655,7 +655,7 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
                   const bg = line?.type === "remove" ? "rgba(229,83,75,0.12)" : "transparent";
                   return (
                     <tr key={i} style={{ background: bg }}>
-                      <td style={{ color: "rgba(255,255,255,0.2)", padding: "0 6px", textAlign: "right", userSelect: "none", fontSize: "11px", whiteSpace: "nowrap" }}>
+                      <td style={{ color: "var(--overlay-vivid)", padding: "0 6px", textAlign: "right", userSelect: "none", fontSize: "11px", whiteSpace: "nowrap" }}>
                         {line?.oldLine ?? ""}
                       </td>
                       <td style={{ color: line?.type === "remove" ? "#ffb3ae" : "#e0e0e0", padding: "0 12px 0 4px", whiteSpace: "pre", wordBreak: "break-all" }}>
@@ -686,7 +686,7 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
                   const bg = line?.type === "add" ? "rgba(29,185,84,0.1)" : "transparent";
                   return (
                     <tr key={i} style={{ background: bg }}>
-                      <td style={{ color: "rgba(255,255,255,0.2)", padding: "0 6px", textAlign: "right", userSelect: "none", fontSize: "11px", whiteSpace: "nowrap" }}>
+                      <td style={{ color: "var(--overlay-vivid)", padding: "0 6px", textAlign: "right", userSelect: "none", fontSize: "11px", whiteSpace: "nowrap" }}>
                         {line?.newLine ?? ""}
                       </td>
                       <td style={{ color: line?.type === "add" ? "#b6f5c8" : "#e0e0e0", padding: "0 12px 0 4px", whiteSpace: "pre", wordBreak: "break-all" }}>
@@ -834,7 +834,7 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
                   ? "rgba(229,83,75,0.08)"
                   : "transparent";
 
-              const lineNumColor = "rgba(255,255,255,0.2)";
+              const lineNumColor = "var(--overlay-vivid)";
               const sigColor =
                 line.type === "add"
                   ? "#1DB954"

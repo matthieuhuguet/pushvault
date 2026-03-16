@@ -286,7 +286,7 @@ export function GitHubPanel() {
                 borderRadius: "8px",
                 padding: "12px 14px",
                 gap: "12px",
-                border: "1px solid rgba(255,255,255,0.04)",
+                border: "1px solid var(--overlay-soft)",
               }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>

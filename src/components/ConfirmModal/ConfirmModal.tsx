@@ -143,8 +143,8 @@ export function ConfirmModal() {
               style={{
                 width: "100%",
                 padding: "9px 12px",
-                background: "rgba(255,255,255,0.05)",
-                border: `1px solid ${phrase === options.confirmPhrase ? "rgba(229,83,75,0.5)" : "rgba(255,255,255,0.1)"}`,
+                background: "var(--overlay-soft)",
+                border: `1px solid ${phrase === options.confirmPhrase ? "rgba(229,83,75,0.5)" : "var(--overlay-light)"}`,
                 borderRadius: "8px",
                 color: "var(--color-text-primary)",
                 fontSize: "13px",
@@ -164,7 +164,7 @@ export function ConfirmModal() {
             onClick={() => respond(false)}
             style={{
               padding: "9px 20px",
-              background: "rgba(255,255,255,0.06)",
+              background: "var(--overlay-subtle)",
               border: "1px solid var(--color-border)",
               borderRadius: "20px",
               color: "var(--color-text-secondary)",
@@ -174,12 +174,12 @@ export function ConfirmModal() {
               transition: "all 120ms ease",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.1)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
             }}
           >
             {options.cancelLabel ?? "Cancel"}

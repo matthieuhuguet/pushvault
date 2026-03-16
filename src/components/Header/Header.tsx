@@ -146,7 +146,7 @@ export function Header() {
           <button
             onClick={() => setSearchQuery("")}
             style={{
-              background: "rgba(255,255,255,0.1)",
+              background: "var(--overlay-light)",
               border: "none",
               borderRadius: "50%",
               width: "18px",
@@ -163,11 +163,11 @@ export function Header() {
             }}
             onMouseEnter={(e) =>
               ((e.currentTarget as HTMLButtonElement).style.background =
-                "rgba(255,255,255,0.2)")
+                "var(--overlay-vivid)")
             }
             onMouseLeave={(e) =>
               ((e.currentTarget as HTMLButtonElement).style.background =
-                "rgba(255,255,255,0.1)")
+                "var(--overlay-light)")
             }
           >
             ✕
@@ -178,7 +178,7 @@ export function Header() {
             style={{
               fontSize: "10px",
               color: "var(--color-text-muted)",
-              background: "rgba(255,255,255,0.06)",
+              background: "var(--overlay-subtle)",
               border: "1px solid var(--color-border)",
               borderRadius: "4px",
               padding: "1px 5px",
@@ -186,7 +186,7 @@ export function Header() {
               flexShrink: 0,
             }}
           >
-            ⌃K
+            Ctrl+K
           </kbd>
         )}
       </div>
@@ -221,7 +221,7 @@ export function Header() {
             letterSpacing: "0.04em",
           }}
         >
-          v4.0.0
+          v4.5.0
         </span>
       </div>
     </header>

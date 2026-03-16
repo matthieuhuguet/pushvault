@@ -136,7 +136,7 @@ export function GitHubIssuesModal({ repoUrl, repoName, onClose }: GitHubIssuesMo
 
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             {/* Filter pills */}
-            <div style={{ display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: "20px", padding: "2px" }}>
+            <div style={{ display: "flex", background: "var(--overlay-subtle)", borderRadius: "20px", padding: "2px" }}>
               {(["open", "closed"] as IssueFilter[]).map((f) => (
                 <button
                   key={f}
@@ -144,7 +144,7 @@ export function GitHubIssuesModal({ repoUrl, repoName, onClose }: GitHubIssuesMo
                   style={{
                     padding: "4px 12px",
                     borderRadius: "16px",
-                    background: filter === f ? "rgba(255,255,255,0.12)" : "none",
+                    background: filter === f ? "var(--overlay-medium)" : "none",
                     border: "none",
                     color: filter === f ? "#fff" : "#6a6a6a",
                     fontSize: "12px",
@@ -163,18 +163,18 @@ export function GitHubIssuesModal({ repoUrl, repoName, onClose }: GitHubIssuesMo
               onClick={onClose}
               style={{
                 width: "28px", height: "28px", borderRadius: "50%",
-                background: "rgba(255,255,255,0.08)", border: "none",
+                background: "var(--overlay-light)", border: "none",
                 color: "var(--color-text-secondary)", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: "14px", transition: "all 120ms ease",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.15)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-strong)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
               }}
             >
               ✕
@@ -231,9 +231,9 @@ export function GitHubIssuesModal({ repoUrl, repoName, onClose }: GitHubIssuesMo
                   padding: "12px 20px",
                   cursor: "pointer",
                   transition: "background 120ms ease",
-                  borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  borderBottom: "1px solid var(--overlay-soft)",
                 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--overlay-soft)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
               >
                 {/* State dot */}
@@ -333,7 +333,7 @@ export function GitHubIssuesModal({ repoUrl, repoName, onClose }: GitHubIssuesMo
                 fontSize: "12px",
                 fontWeight: 600,
                 color: "var(--color-text-secondary)",
-                background: "rgba(255,255,255,0.06)",
+                background: "var(--overlay-subtle)",
                 border: "1px solid var(--color-border)",
                 borderRadius: "8px",
                 cursor: "pointer",
@@ -343,12 +343,12 @@ export function GitHubIssuesModal({ repoUrl, repoName, onClose }: GitHubIssuesMo
                 transition: "all 120ms ease",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-medium)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
               }}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">

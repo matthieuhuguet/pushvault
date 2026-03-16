@@ -90,7 +90,7 @@ export function Modal({
                 width: "32px",
                 height: "32px",
                 borderRadius: "50%",
-                background: "rgba(255,255,255,0.08)",
+                background: "var(--overlay-light)",
                 border: "none",
                 color: "var(--color-text-secondary)",
                 fontSize: "16px",
@@ -104,13 +104,13 @@ export function Modal({
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "rgba(255,255,255,0.15)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+                  "var(--overlay-strong)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "rgba(255,255,255,0.08)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+                  "var(--overlay-light)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
               }}
             >
               ✕

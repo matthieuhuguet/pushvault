@@ -289,7 +289,7 @@ export function Dashboard() {
               style={{
                 fontSize: "13px",
                 color: "var(--color-text-muted)",
-                background: "rgba(255,255,255,0.06)",
+                background: "var(--overlay-subtle)",
                 padding: "2px 10px",
                 borderRadius: "12px",
               }}
@@ -309,7 +309,7 @@ export function Dashboard() {
             <div
               style={{
                 display: "flex",
-                background: "rgba(255,255,255,0.06)",
+                background: "var(--overlay-subtle)",
                 borderRadius: "10px",
                 padding: "2px",
               }}
@@ -323,7 +323,7 @@ export function Dashboard() {
                     width: "28px",
                     height: "28px",
                     borderRadius: "8px",
-                    background: viewMode === mode ? "rgba(255,255,255,0.12)" : "transparent",
+                    background: viewMode === mode ? "var(--overlay-medium)" : "transparent",
                     border: "none",
                     color: viewMode === mode ? "#fff" : "#6a6a6a",
                     cursor: "pointer",
@@ -506,7 +506,7 @@ export function Dashboard() {
                     outlineOffset: "2px",
                     opacity: draggedPath.current === repo.path ? 0.5 : 1,
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.05)"; }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--overlay-soft)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
                 >
                   {/* Color dot */}

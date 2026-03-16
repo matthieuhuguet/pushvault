@@ -128,7 +128,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.8)",
+        background: "var(--overlay-backdrop)",
         backdropFilter: "blur(6px)",
         zIndex: 600,
         display: "flex",
@@ -232,7 +232,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
             width: "32px",
             height: "32px",
             borderRadius: "50%",
-            background: "rgba(255,255,255,0.08)",
+            background: "var(--overlay-light)",
             border: "none",
             color: "var(--color-text-secondary)",
             cursor: "pointer",
@@ -244,12 +244,12 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
             lineHeight: 1,
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.15)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-strong)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
           }}
         >
           ✕
@@ -285,7 +285,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                     placeholder="v1.0.0"
                     style={inputStyle}
                     onFocus={(e) => ((e.target as HTMLInputElement).style.borderColor = "#1DB954")}
-                    onBlur={(e) => ((e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.1)")}
+                    onBlur={(e) => ((e.target as HTMLInputElement).style.borderColor = "var(--overlay-light)")}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleCreate();
                     }}
@@ -301,7 +301,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                     placeholder="HEAD or commit hash"
                     style={inputStyle}
                     onFocus={(e) => ((e.target as HTMLInputElement).style.borderColor = "#1DB954")}
-                    onBlur={(e) => ((e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.1)")}
+                    onBlur={(e) => ((e.target as HTMLInputElement).style.borderColor = "var(--overlay-light)")}
                   />
                 </div>
                 <div style={{ flex: "2 1 280px" }}>
@@ -314,7 +314,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                     placeholder="Release v1.0.0"
                     style={inputStyle}
                     onFocus={(e) => ((e.target as HTMLInputElement).style.borderColor = "#1DB954")}
-                    onBlur={(e) => ((e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.1)")}
+                    onBlur={(e) => ((e.target as HTMLInputElement).style.borderColor = "var(--overlay-light)")}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleCreate();
                     }}
@@ -336,12 +336,12 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                     transition: "all 150ms ease",
                   }}
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
-                    (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+                    (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
                   }}
                   onMouseLeave={(e) => {
                     (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                    (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+                    (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
                   }}
                 >
                   Cancel
@@ -426,7 +426,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                     gridTemplateColumns: "1fr 80px 120px 32px",
                     gap: "12px",
                     padding: "6px 20px",
-                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    borderBottom: "1px solid var(--overlay-soft)",
                     fontSize: "10px",
                     fontWeight: 700,
                     color: "var(--color-text-disabled)",
@@ -449,12 +449,12 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                       gap: "12px",
                       padding: "10px 20px",
                       alignItems: "center",
-                      borderBottom: "1px solid rgba(255,255,255,0.03)",
+                      borderBottom: "1px solid var(--overlay-soft)",
                       animation: `fade-in 200ms ease ${idx * 20}ms both`,
                       transition: "background 100ms ease",
                     }}
                     onMouseEnter={(e) =>
-                      ((e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.03)")
+                      ((e.currentTarget as HTMLDivElement).style.background = "var(--overlay-soft)")
                     }
                     onMouseLeave={(e) =>
                       ((e.currentTarget as HTMLDivElement).style.background = "transparent")
@@ -519,7 +519,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                           borderRadius: "10px",
                           background: tag.is_annotated
                             ? "rgba(29,185,84,0.12)"
-                            : "rgba(255,255,255,0.06)",
+                            : "var(--overlay-subtle)",
                           color: tag.is_annotated ? "#1DB954" : "#b3b3b3",
                         }}
                       >
@@ -576,7 +576,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                               width: "26px",
                               height: "26px",
                               borderRadius: "5px",
-                              background: "rgba(255,255,255,0.06)",
+                              background: "var(--overlay-subtle)",
                               border: "1px solid var(--color-border)",
                               color: "var(--color-text-secondary)",
                               cursor: "pointer",

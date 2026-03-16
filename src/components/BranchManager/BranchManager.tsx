@@ -579,8 +579,8 @@ function BranchRow({
             onClick={() => onRename(branch.name)}
             title="Rename this branch"
             style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.12)",
+              background: "var(--overlay-subtle)",
+              border: "1px solid var(--overlay-medium)",
               borderRadius: "4px",
               padding: "4px 8px",
               color: "var(--color-text-secondary)",
@@ -589,12 +589,12 @@ function BranchRow({
               transition: "all 120ms ease",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-medium)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
             }}
           >
             Rename

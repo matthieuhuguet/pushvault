@@ -104,8 +104,8 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "9px 12px",
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.12)",
+    background: "var(--overlay-soft)",
+    border: "1px solid var(--overlay-medium)",
     borderRadius: "8px",
     color: "#e0e0e0",
     fontSize: "13px",
@@ -129,7 +129,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
     width: "32px",
     height: "18px",
     borderRadius: "9px",
-    background: active ? "#1DB954" : "rgba(255,255,255,0.12)",
+    background: active ? "#1DB954" : "var(--overlay-medium)",
     position: "relative",
     transition: "background 150ms ease",
     flexShrink: 0,
@@ -210,7 +210,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
               width: "32px",
               height: "32px",
               borderRadius: "50%",
-              background: "rgba(255,255,255,0.08)",
+              background: "var(--overlay-light)",
               border: "none",
               color: "var(--color-text-secondary)",
               cursor: "pointer",
@@ -223,12 +223,12 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
               flexShrink: 0,
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.15)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-strong)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
             }}
           >
             ✕
@@ -297,7 +297,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                   onClick={onClose}
                   style={{
                     padding: "9px 18px",
-                    background: "rgba(255,255,255,0.08)",
+                    background: "var(--overlay-light)",
                     border: "1px solid var(--color-border)",
                     borderRadius: "8px",
                     color: "var(--color-text-secondary)",
@@ -339,7 +339,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                     placeholder="v1.0.0"
                     style={inputStyle}
                     onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.5)")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--overlay-medium)")}
                     autoFocus
                   />
                 </div>
@@ -356,7 +356,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                     placeholder="Release v1.0.0"
                     style={inputStyle}
                     onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.5)")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--overlay-medium)")}
                   />
                 </div>
 
@@ -378,7 +378,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                       lineHeight: "1.5",
                     } as React.CSSProperties}
                     onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.5)")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--overlay-medium)")}
                   />
                 </div>
 
@@ -492,7 +492,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                       justifyContent: "space-between",
                       gap: "10px",
                       padding: "7px 0",
-                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      borderBottom: "1px solid var(--overlay-soft)",
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
@@ -549,7 +549,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                         onClick={() => window.open(rel.html_url, "_blank", "noopener noreferrer")}
                         style={{
                           padding: "3px 8px",
-                          background: "rgba(255,255,255,0.06)",
+                          background: "var(--overlay-subtle)",
                           border: "1px solid var(--color-border)",
                           borderRadius: "6px",
                           color: "var(--color-text-secondary)",
@@ -578,12 +578,12 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                       transition: "color 120ms ease, border-color 120ms ease",
                     }}
                     onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.2)";
+                      (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--overlay-vivid)";
                     }}
                     onMouseLeave={(e) => {
                       (e.currentTarget as HTMLButtonElement).style.color = "#535353";
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.1)";
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--overlay-light)";
                     }}
                   >
                     View all releases on GitHub ↗

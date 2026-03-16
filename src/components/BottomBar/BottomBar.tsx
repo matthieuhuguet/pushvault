@@ -313,7 +313,7 @@ export function BottomBar() {
           <div
             style={{
               height: "3px",
-              background: "rgba(255,255,255,0.08)",
+              background: "var(--overlay-light)",
               borderRadius: "2px",
               overflow: "hidden",
             }}
@@ -389,7 +389,7 @@ export function BottomBar() {
             alignItems: "center",
             gap: "6px",
             padding: "7px 16px",
-            background: "rgba(255,255,255,0.06)",
+            background: "var(--overlay-subtle)",
             color: isGcRunning ? "#6a6a6a" : "#b3b3b3",
             border: "1px solid var(--color-border)",
             borderRadius: "20px",
@@ -401,13 +401,13 @@ export function BottomBar() {
           }}
           onMouseEnter={(e) => {
             if (!isGcRunning && !isSyncing && repoCount > 0) {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.1)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
             }
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
           }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
@@ -425,7 +425,7 @@ export function BottomBar() {
             alignItems: "center",
             gap: "6px",
             padding: "7px 16px",
-            background: "rgba(255,255,255,0.06)",
+            background: "var(--overlay-subtle)",
             color: isFetching ? "#6a6a6a" : "#b3b3b3",
             border: "1px solid var(--color-border)",
             borderRadius: "20px",
@@ -438,14 +438,14 @@ export function BottomBar() {
           onMouseEnter={(e) => {
             if (!isFetching && !isSyncing && repoCount > 0) {
               (e.currentTarget as HTMLButtonElement).style.background =
-                "rgba(255,255,255,0.1)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+                "var(--overlay-light)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
             }
           }}
           onMouseLeave={(e) => {
             (e.currentTarget as HTMLButtonElement).style.background =
-              "rgba(255,255,255,0.06)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+              "var(--overlay-subtle)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
           }}
         >
           <FetchIcon />

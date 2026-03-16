@@ -136,11 +136,11 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
             onClick={onClose}
             style={{
               width: "28px", height: "28px", borderRadius: "50%",
-              background: "rgba(255,255,255,0.06)", border: "none",
+              background: "var(--overlay-subtle)", border: "none",
               color: "var(--color-text-muted)", cursor: "pointer", fontSize: "14px",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#fff"; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#6a6a6a"; }}
           >
             ✕
@@ -294,7 +294,7 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
                   </div>
                   <div style={{
                     height: "3px",
-                    background: "rgba(255,255,255,0.08)",
+                    background: "var(--overlay-light)",
                     borderRadius: "2px",
                     overflow: "hidden",
                   }}>
@@ -369,7 +369,7 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
                   style={{
                     flex: 1,
                     padding: "10px",
-                    background: "rgba(255,255,255,0.05)",
+                    background: "var(--overlay-soft)",
                     border: "1px solid var(--color-border)",
                     borderRadius: "10px",
                     color: "var(--color-text-muted)",
@@ -380,12 +380,12 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
                   }}
                   onMouseEnter={(e) => {
                     if (!acting && !isBugFound) {
-                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.1)";
-                      (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+                      (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+                      (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
                     }
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)";
+                    (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-soft)";
                     (e.currentTarget as HTMLButtonElement).style.color = "#6a6a6a";
                   }}
                 >
@@ -397,7 +397,7 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
               {output && (
                 <div style={{
                   padding: "12px 14px",
-                  background: "rgba(255,255,255,0.03)",
+                  background: "var(--overlay-soft)",
                   border: "1px solid var(--color-border-subtle)",
                   borderRadius: "8px",
                   marginBottom: "16px",
@@ -419,7 +419,7 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
                   <div style={{
                     padding: "10px 12px",
                     background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.05)",
+                    border: "1px solid var(--overlay-soft)",
                     borderRadius: "8px",
                     maxHeight: "100px",
                     overflowY: "auto",
@@ -477,7 +477,7 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
             onClick={onClose}
             style={{
               padding: "7px 16px",
-              background: "rgba(255,255,255,0.06)",
+              background: "var(--overlay-subtle)",
               border: "1px solid var(--color-border)",
               borderRadius: "16px",
               color: "var(--color-text-secondary)",
@@ -487,12 +487,12 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
               transition: "all 120ms ease",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.1)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
             }}
           >
             Close

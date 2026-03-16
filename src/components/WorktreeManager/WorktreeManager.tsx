@@ -136,8 +136,8 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
   const inputStyle: React.CSSProperties = {
     flex: 1,
     padding: "8px 12px",
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.12)",
+    background: "var(--overlay-soft)",
+    border: "1px solid var(--overlay-medium)",
     borderRadius: "7px",
     color: "#e0e0e0",
     fontSize: "13px",
@@ -205,8 +205,8 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
                 alignItems: "center",
                 gap: "5px",
                 padding: "7px 12px",
-                background: formMode === "add" ? "rgba(29,185,84,0.15)" : "rgba(255,255,255,0.08)",
-                border: formMode === "add" ? "1px solid rgba(29,185,84,0.35)" : "1px solid rgba(255,255,255,0.1)",
+                background: formMode === "add" ? "rgba(29,185,84,0.15)" : "var(--overlay-light)",
+                border: formMode === "add" ? "1px solid rgba(29,185,84,0.35)" : "1px solid var(--overlay-light)",
                 borderRadius: "8px",
                 color: formMode === "add" ? "#1DB954" : "#b3b3b3",
                 fontSize: "12px",
@@ -224,7 +224,7 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
                 width: "32px",
                 height: "32px",
                 borderRadius: "50%",
-                background: "rgba(255,255,255,0.08)",
+                background: "var(--overlay-light)",
                 border: "none",
                 color: "var(--color-text-secondary)",
                 cursor: "pointer",
@@ -235,12 +235,12 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
                 flexShrink: 0,
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.15)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-strong)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
               }}
             >
               ✕
@@ -282,7 +282,7 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
                     style={inputStyle}
                     autoFocus
                     onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.5)")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--overlay-medium)")}
                   />
                 </div>
 
@@ -297,7 +297,7 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
                     placeholder="existing-branch  or  new-branch-name"
                     style={inputStyle}
                     onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.5)")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--overlay-medium)")}
                   />
                 </div>
 
@@ -311,7 +311,7 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
                       width: "15px",
                       height: "15px",
                       borderRadius: "4px",
-                      border: addNewBranch ? "none" : "1px solid rgba(255,255,255,0.2)",
+                      border: addNewBranch ? "none" : "1px solid var(--overlay-vivid)",
                       background: addNewBranch ? "#1DB954" : "transparent",
                       display: "flex",
                       alignItems: "center",
@@ -337,7 +337,7 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
                     onClick={() => { setFormMode("idle"); setAddPath(""); setAddBranch(""); }}
                     style={{
                       padding: "7px 14px",
-                      background: "rgba(255,255,255,0.06)",
+                      background: "var(--overlay-subtle)",
                       border: "1px solid var(--color-border)",
                       borderRadius: "7px",
                       color: "var(--color-text-secondary)",
@@ -422,7 +422,7 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
           {/* Info footer */}
           <div style={{
             padding: "10px 24px 14px",
-            borderTop: "1px solid rgba(255,255,255,0.04)",
+            borderTop: "1px solid var(--overlay-soft)",
           }}>
             <p style={{ fontSize: "11px", color: "#3a3a3a", margin: 0 }}>
               Worktrees let you check out multiple branches simultaneously in separate directories.
@@ -454,13 +454,13 @@ function WorktreeRow({ wt, onRemove, onOpenExplorer, onOpenTerminal }: RowProps)
         gap: "10px",
         padding: "10px 12px",
         borderRadius: "10px",
-        border: "1px solid rgba(255,255,255,0.05)",
+        border: "1px solid var(--overlay-soft)",
         background: "rgba(255,255,255,0.02)",
         marginBottom: "6px",
         transition: "border-color 120ms ease",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)")}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--overlay-light)")}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--overlay-soft)")}
     >
       {/* Left: icon + info */}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -596,8 +596,8 @@ function ActionBtn({
       onClick={onClick}
       style={{
         padding: "5px 8px",
-        background: "rgba(255,255,255,0.06)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--overlay-subtle)",
+        border: "1px solid var(--overlay-light)",
         borderRadius: "6px",
         color,
         fontSize: "11px",
@@ -606,11 +606,11 @@ function ActionBtn({
         fontFamily: "inherit",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
+        (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-medium)";
         (e.currentTarget as HTMLButtonElement).style.color = hoverColor;
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+        (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
         (e.currentTarget as HTMLButtonElement).style.color = color;
       }}
     >

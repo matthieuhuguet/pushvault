@@ -91,15 +91,15 @@ export function FilterPills() {
             onMouseEnter={(e) => {
               if (!isActive) {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "rgba(255,255,255,0.1)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+                  "var(--overlay-light)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
               }
             }}
             onMouseLeave={(e) => {
               if (!isActive) {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "rgba(255,255,255,0.06)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+                  "var(--overlay-subtle)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
               }
             }}
           >
@@ -117,7 +117,7 @@ export function FilterPills() {
                   borderRadius: "8px",
                   background: isActive
                     ? "rgba(0,0,0,0.2)"
-                    : "rgba(255,255,255,0.12)",
+                    : "var(--overlay-medium)",
                   padding: "0 4px",
                 }}
               >

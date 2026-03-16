@@ -59,7 +59,7 @@ function SettingSlider({ label, value, min, max, step = 1, unit = "", onChange }
             width: "100%",
             height: "4px",
             appearance: "none",
-            background: `linear-gradient(to right, #1DB954 0%, #1DB954 ${((value - min) / (max - min)) * 100}%, rgba(255,255,255,0.12) ${((value - min) / (max - min)) * 100}%, rgba(255,255,255,0.12) 100%)`,
+            background: `linear-gradient(to right, #1DB954 0%, #1DB954 ${((value - min) / (max - min)) * 100}%, var(--overlay-medium) ${((value - min) / (max - min)) * 100}%, var(--overlay-medium) 100%)`,
             borderRadius: "2px",
             outline: "none",
             cursor: "pointer",
@@ -88,7 +88,7 @@ function RepoRow({ repo, onRemove, onEdit }: RepoRowProps) {
         alignItems: "center",
         gap: "12px",
         padding: "10px 16px",
-        background: hovered ? "rgba(255,255,255,0.04)" : "transparent",
+        background: hovered ? "var(--overlay-soft)" : "transparent",
         borderRadius: "8px",
         transition: "background 120ms ease",
       }}
@@ -141,19 +141,19 @@ function RepoRow({ repo, onRemove, onEdit }: RepoRowProps) {
               fontSize: "11px",
               fontWeight: 600,
               color: "var(--color-text-secondary)",
-              background: "rgba(255,255,255,0.06)",
+              background: "var(--overlay-subtle)",
               border: "1px solid var(--color-border)",
               borderRadius: "6px",
               cursor: "pointer",
               transition: "all 120ms ease",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-medium)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
             }}
           >
             Edit
@@ -221,8 +221,8 @@ function AppearanceSection() {
                 alignItems: "center",
                 gap: "14px",
                 padding: "16px",
-                background: isActive ? "rgba(29,185,84,0.08)" : "rgba(255,255,255,0.03)",
-                border: isActive ? "1px solid rgba(29,185,84,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                background: isActive ? "rgba(29,185,84,0.08)" : "var(--overlay-soft)",
+                border: isActive ? "1px solid rgba(29,185,84,0.3)" : "1px solid var(--overlay-subtle)",
                 borderRadius: "10px",
                 cursor: "pointer",
                 transition: "all 150ms ease",
@@ -230,10 +230,10 @@ function AppearanceSection() {
                 width: "100%",
               }}
               onMouseEnter={(e) => {
-                if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+                if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
               }}
               onMouseLeave={(e) => {
-                if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.03)";
+                if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-soft)";
               }}
             >
               {/* Preview swatch */}
@@ -289,7 +289,9 @@ type Section = typeof SECTIONS[number];
 
 const ICON_OPTIONS = [
   "brain", "camera", "code", "folder", "star",
-  "rocket", "book", "music", "cube",
+  "rocket", "book", "music", "cube", "download",
+  "portfolio", "globe", "shield", "terminal",
+  "heart", "zap", "git",
 ];
 const COLOR_OPTIONS = [
   "#1DB954", "#3d9be9", "#e5534b", "#f59b00",
@@ -394,7 +396,7 @@ export function Settings({ onClose }: SettingsProps) {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.8)",
+        background: "var(--overlay-backdrop)",
         backdropFilter: "blur(6px)",
         zIndex: 600,
         display: "flex",
@@ -429,7 +431,7 @@ export function Settings({ onClose }: SettingsProps) {
             width: "32px",
             height: "32px",
             borderRadius: "50%",
-            background: "rgba(255,255,255,0.08)",
+            background: "var(--overlay-light)",
             border: "none",
             color: "var(--color-text-secondary)",
             cursor: "pointer",
@@ -441,12 +443,12 @@ export function Settings({ onClose }: SettingsProps) {
             transition: "background 120ms ease, color 120ms ease",
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.15)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-strong)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
           }}
         >
           ✕
@@ -460,7 +462,7 @@ export function Settings({ onClose }: SettingsProps) {
           style={{
             width: "180px",
             background: "var(--color-bg-primary)",
-            borderRight: "1px solid rgba(255,255,255,0.06)",
+            borderRight: "1px solid var(--overlay-subtle)",
             padding: "16px 8px",
             flexShrink: 0,
           }}
@@ -475,7 +477,7 @@ export function Settings({ onClose }: SettingsProps) {
                 borderRadius: "8px",
                 background:
                   activeSection === s
-                    ? "rgba(255,255,255,0.08)"
+                    ? "var(--overlay-light)"
                     : "transparent",
                 border: "none",
                 color: activeSection === s ? "#fff" : "#b3b3b3",
@@ -489,7 +491,7 @@ export function Settings({ onClose }: SettingsProps) {
               onMouseEnter={(e) => {
                 if (activeSection !== s)
                   (e.currentTarget as HTMLButtonElement).style.background =
-                    "rgba(255,255,255,0.04)";
+                    "var(--overlay-soft)";
               }}
               onMouseLeave={(e) => {
                 if (activeSection !== s)
@@ -575,7 +577,7 @@ export function Settings({ onClose }: SettingsProps) {
                     width: "44px",
                     height: "24px",
                     borderRadius: "12px",
-                    background: launchAtStartup ? "#1DB954" : "rgba(255,255,255,0.15)",
+                    background: launchAtStartup ? "#1DB954" : "var(--overlay-strong)",
                     border: "none",
                     cursor: "pointer",
                     position: "relative",
@@ -621,9 +623,9 @@ export function Settings({ onClose }: SettingsProps) {
                   borderRadius: "10px",
                   fontSize: "11px",
                   fontWeight: 700,
-                  background: portableMode ? "rgba(29,185,84,0.15)" : "rgba(255,255,255,0.06)",
+                  background: portableMode ? "rgba(29,185,84,0.15)" : "var(--overlay-subtle)",
                   color: portableMode ? "#1DB954" : "#535353",
-                  border: portableMode ? "1px solid rgba(29,185,84,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                  border: portableMode ? "1px solid rgba(29,185,84,0.3)" : "1px solid var(--overlay-light)",
                 }}>
                   {portableMode ? "ON" : "OFF"}
                 </span>
@@ -718,7 +720,7 @@ export function Settings({ onClose }: SettingsProps) {
                     width: "44px",
                     height: "24px",
                     borderRadius: "12px",
-                    background: localConfig.gpg_sign_commits ? "#1DB954" : "rgba(255,255,255,0.15)",
+                    background: localConfig.gpg_sign_commits ? "#1DB954" : "var(--overlay-strong)",
                     border: "none",
                     cursor: "pointer",
                     position: "relative",
@@ -758,7 +760,7 @@ export function Settings({ onClose }: SettingsProps) {
                   style={{
                     width: "100%",
                     padding: "9px 12px",
-                    background: localConfig.gpg_sign_commits ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.02)",
+                    background: localConfig.gpg_sign_commits ? "var(--overlay-subtle)" : "rgba(255,255,255,0.02)",
                     border: "1px solid var(--color-border)",
                     borderRadius: "8px",
                     color: localConfig.gpg_sign_commits ? "#fff" : "#535353",
@@ -789,7 +791,7 @@ export function Settings({ onClose }: SettingsProps) {
                   style={{
                     width: "100%",
                     padding: "9px 12px",
-                    background: "rgba(255,255,255,0.06)",
+                    background: "var(--overlay-subtle)",
                     border: "1px solid var(--color-border)",
                     borderRadius: "8px",
                     color: "var(--color-text-primary)",
@@ -800,7 +802,7 @@ export function Settings({ onClose }: SettingsProps) {
                     transition: "border-color 150ms ease",
                   }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(29,185,84,0.4)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "var(--overlay-light)"; }}
                 />
                 {localConfig.github_token && (
                   <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#1DB954" }}>
@@ -813,7 +815,7 @@ export function Settings({ onClose }: SettingsProps) {
               <div style={{
                 marginTop: "8px",
                 padding: "12px 16px",
-                background: "rgba(255,255,255,0.03)",
+                background: "var(--overlay-soft)",
                 border: "1px solid var(--color-border-subtle)",
                 borderRadius: "10px",
               }}>
@@ -847,7 +849,7 @@ export function Settings({ onClose }: SettingsProps) {
           onClick={onClose}
           style={{
             padding: "9px 20px",
-            background: "rgba(255,255,255,0.06)",
+            background: "var(--overlay-subtle)",
             border: "1px solid var(--color-border)",
             borderRadius: "20px",
             color: "var(--color-text-secondary)",
@@ -857,12 +859,12 @@ export function Settings({ onClose }: SettingsProps) {
             transition: "all 150ms ease",
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.1)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
           }}
         >
           Cancel
@@ -900,7 +902,7 @@ export function Settings({ onClose }: SettingsProps) {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.6)",
+            background: "var(--overlay-backdrop-light)",
             zIndex: 700,
             display: "flex",
             alignItems: "center",
@@ -988,7 +990,7 @@ export function Settings({ onClose }: SettingsProps) {
                       background:
                         editRepo.icon === icon
                           ? "rgba(29,185,84,0.2)"
-                          : "rgba(255,255,255,0.06)",
+                          : "var(--overlay-subtle)",
                       border: `1px solid ${editRepo.icon === icon ? "#1DB954" : "transparent"}`,
                       borderRadius: "6px",
                       color: editRepo.icon === icon ? "#1DB954" : "#b3b3b3",
@@ -1040,7 +1042,7 @@ export function Settings({ onClose }: SettingsProps) {
                 onClick={() => setEditRepo(null)}
                 style={{
                   padding: "8px 18px",
-                  background: "rgba(255,255,255,0.06)",
+                  background: "var(--overlay-subtle)",
                   border: "1px solid var(--color-border)",
                   borderRadius: "20px",
                   color: "var(--color-text-secondary)",

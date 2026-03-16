@@ -38,7 +38,7 @@ export function ActivityLog() {
     <button
       onClick={() => setFilter(value)}
       style={{
-        background: filter === value ? "rgba(255,255,255,0.12)" : "none",
+        background: filter === value ? "var(--overlay-medium)" : "none",
         border: "none",
         borderRadius: "20px",
         padding: "5px 14px",
@@ -59,7 +59,7 @@ export function ActivityLog() {
           fontWeight: 700,
           padding: "1px 5px",
           borderRadius: "8px",
-          background: badgeColor ? `${badgeColor}22` : "rgba(255,255,255,0.15)",
+          background: badgeColor ? `${badgeColor}22` : "var(--overlay-strong)",
           color: badgeColor ?? "#b3b3b3",
         }}>
           {badgeCount}
@@ -113,7 +113,7 @@ export function ActivityLog() {
             onClick={handleExport}
             disabled={entries.length === 0}
             style={{
-              background: "rgba(255,255,255,0.08)",
+              background: "var(--overlay-light)",
               border: "1px solid var(--color-border)",
               borderRadius: "6px",
               padding: "7px 14px",
@@ -208,7 +208,7 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
         background: hovered
           ? entry.isDestructive
             ? "rgba(245,155,0,0.06)"
-            : "rgba(255,255,255,0.04)"
+            : "var(--overlay-soft)"
           : entry.isDestructive
           ? "rgba(245,155,0,0.025)"
           : "transparent",
@@ -254,7 +254,7 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
           </span>
           <span style={{
             fontSize: "11px",
-            background: entry.isDestructive ? "rgba(245,155,0,0.1)" : "rgba(255,255,255,0.08)",
+            background: entry.isDestructive ? "rgba(245,155,0,0.1)" : "var(--overlay-light)",
             color: entry.isDestructive ? "#f59b00" : "#b3b3b3",
             padding: "2px 8px",
             borderRadius: "10px",

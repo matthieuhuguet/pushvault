@@ -103,7 +103,7 @@ function CommitContextMenu({ x, y, commit, repoPath, onClose, onRefresh }: Commi
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = danger
           ? "rgba(229,83,75,0.1)"
-          : "rgba(255,255,255,0.08)";
+          : "var(--overlay-light)";
         (e.currentTarget as HTMLButtonElement).style.color = danger ? "#e5534b" : "#fff";
       }}
       onMouseLeave={(e) => {
@@ -117,7 +117,7 @@ function CommitContextMenu({ x, y, commit, repoPath, onClose, onRefresh }: Commi
   );
 
   const divider = () => (
-    <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
+    <div style={{ height: "1px", background: "var(--overlay-subtle)", margin: "4px 0" }} />
   );
 
   const handleCopyHash = () => {
@@ -392,7 +392,7 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.8)",
+        background: "var(--overlay-backdrop)",
         backdropFilter: "blur(6px)",
         zIndex: 600,
         display: "flex",
@@ -440,7 +440,7 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
             style={{
               width: "100%",
               padding: "6px 10px 6px 28px",
-              background: "rgba(255,255,255,0.06)",
+              background: "var(--overlay-subtle)",
               border: "1px solid var(--color-border)",
               borderRadius: "20px",
               color: "var(--color-text-primary)",
@@ -449,7 +449,7 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
               boxSizing: "border-box",
             }}
             onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.4)")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "var(--overlay-light)")}
           />
           {searchQuery && (
             <span style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "10px", color: "var(--color-text-disabled)" }}>
@@ -474,7 +474,7 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                 height: "32px",
                 padding: "0 14px",
                 borderRadius: "16px",
-                background: "rgba(255,255,255,0.06)",
+                background: "var(--overlay-subtle)",
                 border: "1px solid var(--color-border)",
                 color: "var(--color-text-secondary)",
                 cursor: "pointer",
@@ -486,12 +486,12 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                 transition: "all 150ms ease",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-medium)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
               }}
             >
               {/* GitHub icon */}
@@ -555,7 +555,7 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
             width: "32px",
             height: "32px",
             borderRadius: "50%",
-            background: "rgba(255,255,255,0.08)",
+            background: "var(--overlay-light)",
             border: "none",
             color: "var(--color-text-secondary)",
             cursor: "pointer",
@@ -567,12 +567,12 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
             lineHeight: 1,
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.15)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-strong)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
           }}
         >
           ✕
@@ -589,7 +589,7 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
-            borderRight: expandedHash ? "1px solid rgba(255,255,255,0.06)" : "none",
+            borderRight: expandedHash ? "1px solid var(--overlay-subtle)" : "none",
             transition: "width 250ms ease",
           }}
         >
@@ -667,7 +667,7 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                         top: "28px",
                         height: "100%",
                         width: "1px",
-                        background: "rgba(255,255,255,0.08)",
+                        background: "var(--overlay-light)",
                       }}
                     />
 
@@ -681,7 +681,7 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                         height: "11px",
                         borderRadius: "50%",
                         background: isExpanded ? "#1DB954" : isFocused ? "#3d9be9" : "#282828",
-                        border: `2px solid ${isExpanded ? "#1DB954" : isFocused ? "#3d9be9" : "rgba(255,255,255,0.15)"}`,
+                        border: `2px solid ${isExpanded ? "#1DB954" : isFocused ? "#3d9be9" : "var(--overlay-strong)"}`,
                         transition: "all 150ms ease",
                         zIndex: 1,
                         boxShadow: isExpanded
@@ -715,7 +715,7 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                       onMouseEnter={(e) => {
                         if (!isExpanded && !isFocused)
                           (e.currentTarget as HTMLDivElement).style.background =
-                            "rgba(255,255,255,0.03)";
+                            "var(--overlay-soft)";
                       }}
                       onMouseLeave={(e) => {
                         if (!isExpanded && !isFocused)
@@ -800,7 +800,7 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                               transition: "color 100ms ease",
                               lineHeight: 1,
                             }}
-                            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3")}
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)")}
                             onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#535353")}
                           >
                             ↗

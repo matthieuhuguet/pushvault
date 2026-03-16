@@ -107,7 +107,7 @@ export function KeyboardHelp({ onClose }: KeyboardHelpProps) {
               width: "32px",
               height: "32px",
               borderRadius: "50%",
-              background: "rgba(255,255,255,0.08)",
+              background: "var(--overlay-light)",
               border: "none",
               color: "var(--color-text-secondary)",
               cursor: "pointer",
@@ -119,12 +119,12 @@ export function KeyboardHelp({ onClose }: KeyboardHelpProps) {
               transition: "background 120ms ease, color 120ms ease",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.15)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-strong)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
             }}
           >
             ✕
@@ -155,9 +155,9 @@ export function KeyboardHelp({ onClose }: KeyboardHelpProps) {
                       justifyContent: "space-between",
                       gap: "12px",
                       padding: "9px 12px",
-                      background: "rgba(255,255,255,0.03)",
+                      background: "var(--overlay-soft)",
                       borderRadius: "8px",
-                      border: "1px solid rgba(255,255,255,0.04)",
+                      border: "1px solid var(--overlay-soft)",
                     }}
                   >
                     <span style={{ fontSize: "12px", color: "var(--color-text-secondary)", flex: 1, lineHeight: 1.3 }}>
@@ -169,8 +169,8 @@ export function KeyboardHelp({ onClose }: KeyboardHelpProps) {
                         alignItems: "center",
                         padding: "3px 7px",
                         background: "var(--color-bg-elevated)",
-                        border: "1px solid rgba(255,255,255,0.15)",
-                        borderBottom: "2px solid rgba(255,255,255,0.1)",
+                        border: "1px solid var(--overlay-strong)",
+                        borderBottom: "2px solid var(--overlay-light)",
                         borderRadius: "5px",
                         fontSize: "11px",
                         fontFamily: "monospace",

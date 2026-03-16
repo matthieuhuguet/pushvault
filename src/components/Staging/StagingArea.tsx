@@ -114,7 +114,7 @@ function FileContextMenu({
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = danger
           ? "rgba(229,83,75,0.1)"
-          : "rgba(255,255,255,0.08)";
+          : "var(--overlay-light)";
         (e.currentTarget as HTMLButtonElement).style.color = danger ? "#e5534b" : "#fff";
       }}
       onMouseLeave={(e) => {
@@ -196,7 +196,7 @@ function FileContextMenu({
       {isStaged && onUnstage && menuItem("Unstage", onUnstage)}
       {!isStaged && !isUntracked && onDiscard && menuItem("Discard Changes", handleDiscard, true)}
       {isUntracked && onDelete && menuItem("Delete File", handleDelete, true)}
-      <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
+      <div style={{ height: "1px", background: "var(--overlay-subtle)", margin: "4px 0" }} />
       {menuItem("Open in Editor", handleOpenInEditor)}
       {menuItem("Reveal in Explorer", handleRevealInExplorer)}
       {menuItem("Copy Path", handleCopyPath)}
@@ -231,8 +231,8 @@ function SectionHeader({
         padding: "8px 12px 8px 16px",
         cursor: "pointer",
         userSelect: "none",
-        background: "rgba(255,255,255,0.03)",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
+        background: "var(--overlay-soft)",
+        borderBottom: "1px solid var(--overlay-soft)",
       }}
       onClick={onToggle}
     >
@@ -259,7 +259,7 @@ function SectionHeader({
             fontWeight: 700,
             padding: "1px 6px",
             borderRadius: "8px",
-            background: "rgba(255,255,255,0.08)",
+            background: "var(--overlay-light)",
             color: "var(--color-text-secondary)",
           }}
         >
@@ -299,19 +299,19 @@ function MiniBtn({
         fontSize: "10px",
         fontWeight: 600,
         color,
-        background: "rgba(255,255,255,0.06)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--overlay-subtle)",
+        border: "1px solid var(--overlay-light)",
         borderRadius: "8px",
         cursor: "pointer",
         transition: "background 100ms ease, color 100ms ease",
         whiteSpace: "nowrap",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
-        (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+        (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-medium)";
+        (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+        (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
         (e.currentTarget as HTMLButtonElement).style.color = color;
       }}
     >
@@ -363,7 +363,7 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
           background: selected
             ? "rgba(29,185,84,0.12)"
             : hovered
-            ? "rgba(255,255,255,0.04)"
+            ? "var(--overlay-soft)"
             : "transparent",
           borderLeft: selected ? "2px solid #1DB954" : "2px solid transparent",
           transition: "background 100ms ease",
@@ -470,7 +470,7 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
                   width: "22px",
                   height: "22px",
                   borderRadius: "4px",
-                  background: "rgba(255,255,255,0.08)",
+                  background: "var(--overlay-light)",
                   border: "none",
                   color: "var(--color-text-secondary)",
                   cursor: "pointer",
@@ -482,11 +482,11 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
                 }}
                 onMouseEnter={(e) =>
                   ((e.currentTarget as HTMLButtonElement).style.background =
-                    "rgba(255,255,255,0.15)")
+                    "var(--overlay-strong)")
                 }
                 onMouseLeave={(e) =>
                   ((e.currentTarget as HTMLButtonElement).style.background =
-                    "rgba(255,255,255,0.08)")
+                    "var(--overlay-light)")
                 }
               >
                 −
@@ -835,7 +835,7 @@ export function StagingArea() {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.8)",
+        background: "var(--overlay-backdrop)",
         backdropFilter: "blur(6px)",
         zIndex: 600,
         display: "flex",
@@ -927,7 +927,7 @@ export function StagingArea() {
             width: "32px",
             height: "32px",
             borderRadius: "50%",
-            background: "rgba(255,255,255,0.06)",
+            background: "var(--overlay-subtle)",
             border: "none",
             color: "var(--color-text-secondary)",
             cursor: "pointer",
@@ -938,11 +938,11 @@ export function StagingArea() {
           }}
           onMouseEnter={(e) =>
             ((e.currentTarget as HTMLButtonElement).style.background =
-              "rgba(255,255,255,0.12)")
+              "var(--overlay-medium)")
           }
           onMouseLeave={(e) =>
             ((e.currentTarget as HTMLButtonElement).style.background =
-              "rgba(255,255,255,0.06)")
+              "var(--overlay-subtle)")
           }
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -957,7 +957,7 @@ export function StagingArea() {
             width: "32px",
             height: "32px",
             borderRadius: "50%",
-            background: "rgba(255,255,255,0.08)",
+            background: "var(--overlay-light)",
             border: "none",
             color: "var(--color-text-secondary)",
             cursor: "pointer",
@@ -969,12 +969,12 @@ export function StagingArea() {
             lineHeight: 1,
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.15)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-strong)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
           }}
         >
           ✕
@@ -989,7 +989,7 @@ export function StagingArea() {
             width: "40%",
             minWidth: "280px",
             maxWidth: "480px",
-            borderRight: "1px solid rgba(255,255,255,0.06)",
+            borderRight: "1px solid var(--overlay-subtle)",
             display: "flex",
             flexDirection: "column",
             background: "#161616",

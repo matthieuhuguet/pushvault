@@ -219,11 +219,11 @@ export function RebasePanel({ repoPath, onClose }: RebasePanelProps) {
             onClick={onClose}
             style={{
               width: "28px", height: "28px", borderRadius: "50%",
-              background: "rgba(255,255,255,0.06)", border: "none",
+              background: "var(--overlay-subtle)", border: "none",
               color: "var(--color-text-muted)", cursor: "pointer", fontSize: "14px",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#fff"; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#6a6a6a"; }}
           >
             ✕
@@ -301,7 +301,7 @@ export function RebasePanel({ repoPath, onClose }: RebasePanelProps) {
                   style={{
                     flex: 1,
                     padding: "9px 12px",
-                    background: "rgba(255,255,255,0.06)",
+                    background: "var(--overlay-subtle)",
                     border: "1px solid var(--color-border)",
                     borderRadius: "8px",
                     color: "var(--color-text-primary)",
@@ -310,7 +310,7 @@ export function RebasePanel({ repoPath, onClose }: RebasePanelProps) {
                     outline: "none",
                   }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(176,105,248,0.4)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "var(--overlay-light)"; }}
                 />
                 <button
                   onClick={loadCommits}
@@ -386,10 +386,10 @@ export function RebasePanel({ repoPath, onClose }: RebasePanelProps) {
                         ? "rgba(176,105,248,0.08)"
                         : c.action === "drop"
                           ? "rgba(229,83,75,0.05)"
-                          : "rgba(255,255,255,0.03)",
+                          : "var(--overlay-soft)",
                       border: dragOver === idx
                         ? "1px dashed rgba(176,105,248,0.5)"
-                        : "1px solid rgba(255,255,255,0.05)",
+                        : "1px solid var(--overlay-soft)",
                       borderRadius: "8px",
                       marginBottom: "5px",
                       cursor: "grab",
@@ -498,7 +498,7 @@ export function RebasePanel({ repoPath, onClose }: RebasePanelProps) {
             <div style={{
               marginTop: "12px",
               padding: "10px 12px",
-              background: "rgba(255,255,255,0.03)",
+              background: "var(--overlay-soft)",
               border: "1px solid var(--color-border-subtle)",
               borderRadius: "8px",
               maxHeight: "120px",
@@ -515,7 +515,7 @@ export function RebasePanel({ repoPath, onClose }: RebasePanelProps) {
               padding: "32px",
               textAlign: "center",
               background: "rgba(255,255,255,0.02)",
-              border: "1px dashed rgba(255,255,255,0.06)",
+              border: "1px dashed var(--overlay-subtle)",
               borderRadius: "10px",
             }}>
               <p style={{ margin: 0, fontSize: "13px", color: "var(--color-text-disabled)" }}>
@@ -544,7 +544,7 @@ export function RebasePanel({ repoPath, onClose }: RebasePanelProps) {
                 style={{
                   padding: "7px 14px",
                   background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  border: "1px solid var(--overlay-light)",
                   borderRadius: "16px",
                   color: "var(--color-text-disabled)",
                   fontSize: "12px",
@@ -560,7 +560,7 @@ export function RebasePanel({ repoPath, onClose }: RebasePanelProps) {
               onClick={onClose}
               style={{
                 padding: "7px 16px",
-                background: "rgba(255,255,255,0.06)",
+                background: "var(--overlay-subtle)",
                 border: "1px solid var(--color-border)",
                 borderRadius: "16px",
                 color: "var(--color-text-secondary)",

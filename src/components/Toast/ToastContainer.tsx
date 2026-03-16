@@ -141,7 +141,7 @@ function ToastItem({ toast }: { toast: Toast }) {
             alignItems: "center",
             justifyContent: "center",
             borderRadius: "50%",
-            background: "rgba(255,255,255,0.08)",
+            background: "var(--overlay-light)",
             border: "none",
             cursor: "pointer",
             color: "var(--color-text-secondary)",
@@ -151,13 +151,13 @@ function ToastItem({ toast }: { toast: Toast }) {
           }}
           onMouseEnter={(e) => {
             (e.currentTarget as HTMLButtonElement).style.background =
-              "rgba(255,255,255,0.18)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+              "var(--overlay-vivid)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
           }}
           onMouseLeave={(e) => {
             (e.currentTarget as HTMLButtonElement).style.background =
-              "rgba(255,255,255,0.08)";
-            (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+              "var(--overlay-light)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
           }}
         >
           ✕

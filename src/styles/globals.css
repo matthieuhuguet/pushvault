@@ -90,6 +90,22 @@
   --z-modal-backdrop: 500;
   --z-modal: 600;
   --z-toast: 9999;
+
+  /* Theme-aware opacity layers (for inline styles) */
+  --overlay-soft: rgba(255, 255, 255, 0.03);
+  --overlay-subtle: rgba(255, 255, 255, 0.06);
+  --overlay-light: rgba(255, 255, 255, 0.08);
+  --overlay-medium: rgba(255, 255, 255, 0.12);
+  --overlay-strong: rgba(255, 255, 255, 0.15);
+  --overlay-vivid: rgba(255, 255, 255, 0.2);
+  --overlay-backdrop: rgba(0, 0, 0, 0.8);
+  --overlay-backdrop-light: rgba(0, 0, 0, 0.6);
+  --overlay-divider: rgba(255, 255, 255, 0.06);
+  --color-icon-default: rgba(255, 255, 255, 0.9);
+
+  /* Slider range style */
+  --range-filled: #1db954;
+  --range-track: rgba(255, 255, 255, 0.12);
 }
 
 /* ── Light Theme ──────────────────────────────────────────── */
@@ -130,6 +146,21 @@
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.14);
+
+  /* Theme-aware opacity layers — inverted for light */
+  --overlay-soft: rgba(0, 0, 0, 0.02);
+  --overlay-subtle: rgba(0, 0, 0, 0.04);
+  --overlay-light: rgba(0, 0, 0, 0.06);
+  --overlay-medium: rgba(0, 0, 0, 0.08);
+  --overlay-strong: rgba(0, 0, 0, 0.1);
+  --overlay-vivid: rgba(0, 0, 0, 0.14);
+  --overlay-backdrop: rgba(0, 0, 0, 0.5);
+  --overlay-backdrop-light: rgba(0, 0, 0, 0.3);
+  --overlay-divider: rgba(0, 0, 0, 0.06);
+  --color-icon-default: rgba(0, 0, 0, 0.75);
+
+  --range-filled: #1aa34a;
+  --range-track: rgba(0, 0, 0, 0.12);
 }
 
 /* Scrollbar overrides for light theme */

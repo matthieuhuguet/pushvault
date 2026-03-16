@@ -138,7 +138,7 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
               width: "32px",
               height: "32px",
               borderRadius: "50%",
-              background: "rgba(255,255,255,0.08)",
+              background: "var(--overlay-light)",
               border: "none",
               color: "var(--color-text-secondary)",
               cursor: "pointer",
@@ -150,12 +150,12 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
               transition: "background 120ms ease, color 120ms ease",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.15)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-strong)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
             }}
           >
             ✕
@@ -189,7 +189,7 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
               style={{
                 width: "100%",
                 background: "var(--color-bg-card)",
-                border: `1px solid ${urlFocused ? "#1DB954" : "rgba(255,255,255,0.1)"}`,
+                border: `1px solid ${urlFocused ? "#1DB954" : "var(--overlay-light)"}`,
                 borderRadius: "8px",
                 color: "var(--color-text-primary)",
                 fontSize: "13px",
@@ -226,7 +226,7 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
                 style={{
                   flex: 1,
                   background: "var(--color-bg-card)",
-                  border: `1px solid ${destFocused ? "#1DB954" : "rgba(255,255,255,0.1)"}`,
+                  border: `1px solid ${destFocused ? "#1DB954" : "var(--overlay-light)"}`,
                   borderRadius: "8px",
                   color: "var(--color-text-primary)",
                   fontSize: "13px",
@@ -241,7 +241,7 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
                 onClick={handlePickDest}
                 style={{
                   padding: "0 16px",
-                  background: "rgba(255,255,255,0.06)",
+                  background: "var(--overlay-subtle)",
                   border: "1px solid var(--color-border)",
                   borderRadius: "8px",
                   color: "var(--color-text-secondary)",
@@ -253,12 +253,12 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
                   whiteSpace: "nowrap",
                 }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
-                  (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+                  (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-medium)";
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
-                  (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+                  (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
                 }}
               >
                 Browse…
@@ -322,7 +322,7 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
               disabled={cloning}
               style={{
                 padding: "10px 20px",
-                background: "rgba(255,255,255,0.06)",
+                background: "var(--overlay-subtle)",
                 border: "1px solid var(--color-border)",
                 borderRadius: "20px",
                 color: "var(--color-text-secondary)",
@@ -334,13 +334,13 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
               }}
               onMouseEnter={(e) => {
                 if (!cloning) {
-                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.1)";
-                  (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+                  (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
                 }
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
               }}
             >
               Cancel

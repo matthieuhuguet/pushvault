@@ -147,12 +147,12 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
             onClick={onClose}
             style={{
               width: "28px", height: "28px", borderRadius: "50%",
-              background: "rgba(255,255,255,0.06)", border: "none",
+              background: "var(--overlay-subtle)", border: "none",
               color: "var(--color-text-muted)", cursor: "pointer", fontSize: "14px",
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0,
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#fff"; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#6a6a6a"; }}
           >
             ✕
@@ -198,7 +198,7 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
                     style={{
                       flex: 1,
                       padding: "8px 12px",
-                      background: "rgba(255,255,255,0.06)",
+                      background: "var(--overlay-subtle)",
                       border: "1px solid var(--color-border)",
                       borderRadius: "8px",
                       color: "var(--color-text-primary)",
@@ -207,7 +207,7 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
                       outline: "none",
                     }}
                     onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(29,185,84,0.4)"; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "var(--overlay-light)"; }}
                   />
                   <button
                     onClick={() => handleTrack()}
@@ -242,8 +242,8 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
                       onClick={() => handleTrack(s)}
                       style={{
                         padding: "3px 10px",
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.08)",
+                        background: "var(--overlay-soft)",
+                        border: "1px solid var(--overlay-light)",
                         borderRadius: "12px",
                         color: "#8a8a8a",
                         fontSize: "11px",
@@ -257,8 +257,8 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
                         (e.currentTarget as HTMLButtonElement).style.color = "#1DB954";
                       }}
                       onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)";
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.08)";
+                        (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-soft)";
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--overlay-light)";
                         (e.currentTarget as HTMLButtonElement).style.color = "#8a8a8a";
                       }}
                     >
@@ -273,7 +273,7 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
                 <div style={{
                   padding: "24px",
                   background: "rgba(255,255,255,0.02)",
-                  border: "1px dashed rgba(255,255,255,0.06)",
+                  border: "1px dashed var(--overlay-subtle)",
                   borderRadius: "10px",
                   textAlign: "center",
                 }}>
@@ -297,7 +297,7 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
                         alignItems: "center",
                         gap: "10px",
                         padding: "9px 12px",
-                        background: "rgba(255,255,255,0.03)",
+                        background: "var(--overlay-soft)",
                         border: "1px solid var(--color-border-subtle)",
                         borderRadius: "8px",
                         marginBottom: "6px",

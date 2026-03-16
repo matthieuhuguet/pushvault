@@ -76,10 +76,61 @@ function RepoIcon({ name, size = 28 }: { name: string; size?: number }) {
         <line x1="12" y1="22.08" x2="12" y2="12" stroke="currentColor" strokeWidth="1.8" />
       </svg>
     ),
+    download: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points="7 10 12 15 17 10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    ),
+    portfolio: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <line x1="2" y1="13" x2="22" y2="13" stroke="currentColor" strokeWidth="1.8" />
+        <circle cx="12" cy="13" r="1.5" fill="currentColor" />
+      </svg>
+    ),
+    globe: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" />
+        <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="currentColor" strokeWidth="1.8" />
+      </svg>
+    ),
+    shield: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      </svg>
+    ),
+    terminal: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <polyline points="4 17 10 11 4 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <line x1="12" y1="19" x2="20" y2="19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    ),
+    heart: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      </svg>
+    ),
+    zap: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      </svg>
+    ),
+    git: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.8" />
+        <circle cx="6" cy="19" r="2.5" stroke="currentColor" strokeWidth="1.8" />
+        <circle cx="18" cy="19" r="2.5" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M12 7.5v4.5l-6 4.5M12 12l6 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    ),
   };
 
   return (
-    <span style={{ color: "rgba(255,255,255,0.9)", display: "inline-flex" }}>
+    <span style={{ color: "var(--color-icon-default)", display: "inline-flex" }}>
       {icons[name] ?? icons["folder"]}
     </span>
   );
@@ -377,7 +428,7 @@ export function RepoContextMenu({ x, y, repoPath, repoName, conflictsCount, remo
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = danger
           ? "rgba(229,83,75,0.1)"
-          : "rgba(255,255,255,0.08)";
+          : "var(--overlay-light)";
         (e.currentTarget as HTMLButtonElement).style.color = danger ? "#e5534b" : "#fff";
       }}
       onMouseLeave={(e) => {
@@ -413,7 +464,7 @@ export function RepoContextMenu({ x, y, repoPath, repoName, conflictsCount, remo
       {item("Push", "↑", handlePush)}
       {item("Pull", "↓", handlePull)}
       {item("Fetch", "⟳", handleFetch)}
-      <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
+      <div style={{ height: "1px", background: "var(--overlay-subtle)", margin: "4px 0" }} />
       {item("Changes", "±", () => openPanel("staging"))}
       {item("History", "◷", () => openPanel("history"))}
       {item("Stash", "📦", () => openPanel("stash"))}
@@ -426,17 +477,17 @@ export function RepoContextMenu({ x, y, repoPath, repoName, conflictsCount, remo
       {item("Manage Tags", "🏷", () => openPanel("tags"))}
       {item("Edit .gitignore", "⊘", () => openPanel("gitignore"))}
       {conflictsCount > 0 && item("Resolve Conflicts", "⚡", () => openPanel("conflicts"))}
-      <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
+      <div style={{ height: "1px", background: "var(--overlay-subtle)", margin: "4px 0" }} />
       {item("Open in Explorer", "📁", handleOpenExplorer)}
       {item("Open in VS Code", "⎈", handleOpenVscode)}
       {item("Open in Terminal", ">_", handleOpenTerminal)}
-      <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
+      <div style={{ height: "1px", background: "var(--overlay-subtle)", margin: "4px 0" }} />
       {item("Git GC / Clean up", "🔧", handleGitGc)}
       {item("Fetch & Prune", "🌿", handleFetchPrune)}
       {item("Remote Prune", "✂", handleRemotePrune)}
       {remoteUrl && (
         <>
-          <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
+          <div style={{ height: "1px", background: "var(--overlay-subtle)", margin: "4px 0" }} />
           {item("Open on GitHub", "⎋", handleOpenRemoteUrl)}
           {item("Copy Remote URL", "⎘", handleCopyRemoteUrl)}
           {onShowPRs && item("Pull Requests", "⇌", () => { onClose(); onShowPRs(); })}
@@ -445,7 +496,7 @@ export function RepoContextMenu({ x, y, repoPath, repoName, conflictsCount, remo
           {onShowRelease && item("Create Release", "🚀", () => { onClose(); onShowRelease(); })}
         </>
       )}
-      <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
+      <div style={{ height: "1px", background: "var(--overlay-subtle)", margin: "4px 0" }} />
       {item("Remove", "✕", handleRemove, true)}
     </div>
   );
@@ -576,9 +627,9 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
     if (state === "CONFLICT") return "rgba(232,82,90,0.5)";
     if (state === "ERROR") return "rgba(232,82,90,0.3)";
     if (state === "NEEDS_PUSH" || state === "NEEDS_PULL" || state === "DIVERGED") return "rgba(29,185,84,0.2)";
-    if (state === "SYNCED") return "rgba(255,255,255,0.05)";
+    if (state === "SYNCED") return "var(--overlay-soft)";
     if (hovered) return "rgba(29,185,84,0.4)";
-    return "rgba(255,255,255,0.06)";
+    return "var(--overlay-subtle)";
   };
 
   const handleClick = () => {
@@ -834,7 +885,7 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
                     fontWeight: 700,
                     padding: "2px 7px",
                     borderRadius: "10px",
-                    background: "rgba(255,255,255,0.08)",
+                    background: "var(--overlay-light)",
                     color: "var(--color-text-secondary)",
                   }}
                 >

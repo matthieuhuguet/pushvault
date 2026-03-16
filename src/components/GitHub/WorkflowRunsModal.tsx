@@ -126,7 +126,7 @@ export function WorkflowRunsModal({ repoUrl, repoName, onClose }: WorkflowRunsMo
               width: "30px",
               height: "30px",
               borderRadius: "50%",
-              background: "rgba(255,255,255,0.08)",
+              background: "var(--overlay-light)",
               border: "none",
               color: "var(--color-text-secondary)",
               cursor: "pointer",
@@ -137,12 +137,12 @@ export function WorkflowRunsModal({ repoUrl, repoName, onClose }: WorkflowRunsMo
               transition: "all 120ms ease",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.15)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-strong)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
             }}
           >
             ✕
@@ -192,7 +192,7 @@ export function WorkflowRunsModal({ repoUrl, repoName, onClose }: WorkflowRunsMo
                   textDecoration: "none",
                   transition: "background 120ms ease",
                 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.04)"; }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--overlay-soft)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; }}
               >
                 {/* Status dot */}
