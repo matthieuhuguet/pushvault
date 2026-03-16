@@ -50,8 +50,8 @@ export const ipc = {
   unstageAll: (path: string) =>
     invoke<void>("unstage_all", { path }),
 
-  commitChanges: (path: string, message: string, amend: boolean) =>
-    invoke<string>("commit_changes", { path, message, amend }),
+  commitChanges: (path: string, message: string, amend: boolean, gpgSign = false, gpgKeyId = "") =>
+    invoke<string>("commit_changes", { path, message, amend, gpgSign, gpgKeyId }),
 
   getDiff: (path: string, file: string | null, staged: boolean) =>
     invoke<DiffResult>("get_diff", { path, file, staged }),
@@ -100,6 +100,9 @@ export const ipc = {
   createBranch: (path: string, name: string, from?: string) => invoke<void>("create_branch", { path, name, from: from ?? null }),
   switchBranch: (path: string, name: string) => invoke<void>("switch_branch", { path, name }),
   deleteBranch: (path: string, name: string, force: boolean) => invoke<void>("delete_branch", { path, name, force }),
+  renameBranch: (path: string, oldName: string, newName: string) => invoke<void>("rename_branch", { path, oldName, newName }),
+  mergeBranch: (path: string, branchName: string) => invoke<string>("merge_branch", { path, branchName }),
+  pushBranch: (path: string, branchName: string) => invoke<string>("push_branch", { path, branchName }),
 
   // Conflict resolution
   getConflictedFiles: (path: string) => invoke<ConflictFile[]>("get_conflicted_files", { path }),
@@ -113,6 +116,7 @@ export const ipc = {
   listTags: (path: string) => invoke<TagInfo[]>("list_tags", { path }),
   createTag: (path: string, name: string, message: string | null, target: string | null) => invoke<void>("create_tag", { path, name, message, target }),
   deleteTag: (path: string, name: string) => invoke<void>("delete_tag", { path, name }),
+  pushTags: (path: string, remote?: string) => invoke<string>("push_tags", { path, remote: remote ?? "" }),
 
   // Reset / Revert / Cherry-pick
   resetRepo: (path: string, target: string, mode: string) => invoke<void>("reset_repo", { path, target, mode }),
@@ -122,6 +126,7 @@ export const ipc = {
 
   // System
   openInExplorer: (path: string) => invoke<void>("open_in_explorer", { path }),
+  revealInExplorer: (path: string) => invoke<void>("reveal_in_explorer", { path }),
   openInVscode: (path: string) => invoke<void>("open_in_vscode", { path }),
   openInTerminal: (path: string) => invoke<void>("open_in_terminal", { path }),
 
@@ -148,4 +153,115 @@ export const ipc = {
 
   // Bulk status
   getAllRepoStatuses: () => invoke<RepoStatus[]>("get_all_repo_statuses"),
+
+  // CI / GitHub
+  getGithubCiStatus: (repoUrl: string, token: string | null) =>
+    invoke<string>("get_github_ci_status", { repoUrl, token }),
+  getGithubWorkflowRuns: (repoUrl: string, token: string | null, limit = 10) =>
+    invoke<Array<{ id: number; name: string; status: string; branch: string; commit_sha: string; url: string; created_at: string }>>(
+      "get_github_workflow_runs", { repoUrl, token, limit }
+    ),
+  getGithubPrs: (repoUrl: string, token: string | null, state = "open") =>
+    invoke<Array<{ number: number; title: string; state: string; author: string; base_branch: string; head_branch: string; url: string; created_at: string; draft: boolean }>>(
+      "get_github_prs", { repoUrl, token, state }
+    ),
+  getGithubIssues: (repoUrl: string, token: string | null, state = "open") =>
+    invoke<Array<{ number: number; title: string; state: string; author: string; url: string; created_at: string; labels: string[]; comments: number; is_pr: boolean }>>(
+      "get_github_issues", { repoUrl, token, state }
+    ),
+
+  // GitHub Releases
+  listGithubReleases: (repoUrl: string, token: string | null) =>
+    invoke<Array<{ id: number; tag_name: string; name: string; html_url: string; published_at: string; draft: boolean; prerelease: boolean }>>(
+      "list_github_releases", { repoUrl, token }
+    ),
+  createGithubRelease: (
+    repoUrl: string,
+    token: string,
+    tagName: string,
+    name: string,
+    body: string,
+    draft: boolean,
+    prerelease: boolean,
+  ) =>
+    invoke<{ id: number; tag_name: string; name: string; html_url: string; published_at: string; draft: boolean; prerelease: boolean }>(
+      "create_github_release", { repoUrl, token, tagName, name, body, draft, prerelease }
+    ),
+
+  // Window state
+  saveWindowState: () => invoke<void>("save_window_state"),
+
+  // Startup launch
+  getLaunchAtStartup: () => invoke<boolean>("get_launch_at_startup"),
+  setLaunchAtStartup: (enable: boolean) => invoke<void>("set_launch_at_startup", { enable }),
+
+  // Stash diff
+  getStashDiff: (path: string, index: number) => invoke<DiffResult>("get_stash_diff", { path, index }),
+
+  // Worktrees
+  listWorktrees: (path: string) =>
+    invoke<Array<{ path: string; head: string; branch: string; is_main: boolean; is_locked: boolean; is_prunable: boolean }>>("list_worktrees", { path }),
+  addWorktree: (path: string, worktreePath: string, branch: string, newBranch: boolean) =>
+    invoke<string>("add_worktree", { path, worktreePath, branch, newBranch }),
+  removeWorktree: (path: string, worktreePath: string, force: boolean) =>
+    invoke<string>("remove_worktree", { path, worktreePath, force }),
+
+  // Submodules
+  listSubmodules: (path: string) =>
+    invoke<Array<{ path: string; url: string; head: string; status: string; describe: string }>>("list_submodules", { path }),
+  updateSubmodules: (path: string) =>
+    invoke<string>("update_submodules", { path }),
+  addSubmodule: (path: string, url: string, subPath: string) =>
+    invoke<string>("add_submodule", { path, url, subPath }),
+  removeSubmodule: (path: string, subPath: string) =>
+    invoke<string>("remove_submodule", { path, subPath }),
+
+  // Interactive Rebase
+  getRebaseCommits: (path: string, baseCommit: string) =>
+    invoke<Array<[string, string, string]>>("get_rebase_commits", { path, baseCommit }),
+  startInteractiveRebase: (path: string, baseCommit: string, todoContent: string) =>
+    invoke<string>("start_interactive_rebase", { path, baseCommit, todoContent }),
+  rebaseContinue: (path: string) => invoke<string>("rebase_continue", { path }),
+  rebaseAbort: (path: string) => invoke<string>("rebase_abort", { path }),
+  rebaseInProgress: (path: string) => invoke<boolean>("rebase_in_progress", { path }),
+
+  // Git Bisect
+  bisectStatus: (path: string) =>
+    invoke<{ active: boolean; current_hash: string; current_message: string; log: string; steps_done: number; steps_remaining: number }>("bisect_status", { path }),
+  bisectStart: (path: string, badCommit: string, goodCommit: string) =>
+    invoke<string>("bisect_start", { path, badCommit, goodCommit }),
+  bisectGood: (path: string) => invoke<string>("bisect_good", { path }),
+  bisectBad: (path: string) => invoke<string>("bisect_bad", { path }),
+  bisectSkip: (path: string) => invoke<string>("bisect_skip", { path }),
+  bisectReset: (path: string) => invoke<string>("bisect_reset", { path }),
+
+  // Git LFS
+  detectLfs: (path: string) => invoke<boolean>("detect_lfs", { path }),
+  listLfsTracks: (path: string) => invoke<string[]>("list_lfs_tracks", { path }),
+  lfsTrack: (path: string, pattern: string) => invoke<string>("lfs_track", { path, pattern }),
+  lfsUntrack: (path: string, pattern: string) => invoke<string>("lfs_untrack", { path, pattern }),
+
+  // Hunk-level staging
+  stageHunk: (path: string, patch: string) => invoke<void>("stage_hunk", { path, patch }),
+  discardHunk: (path: string, patch: string) => invoke<void>("discard_hunk", { path, patch }),
+
+  // Filesystem watchers
+  setupFileWatchers: (paths: string[]) => invoke<void>("setup_file_watchers", { paths }),
+
+  // Git maintenance
+  gitGc: (path: string) => invoke<string>("git_gc", { path }),
+  remotePrune: (path: string, remote: string) => invoke<string[]>("remote_prune", { path, remote }),
+  fetchPrune: (path: string) => invoke<string>("fetch_prune", { path }),
+  getHeadInfo: (path: string) => invoke<{ is_detached: boolean; hash: string; message: string }>("get_head_info", { path }),
+  branchFromHead: (path: string, branchName: string) => invoke<void>("branch_from_head", { path, branchName }),
+  amendCommitMessage: (path: string, message: string) => invoke<string>("amend_commit_message", { path, message }),
+  getLastCommitMessage: (path: string) => invoke<string>("get_last_commit_message", { path }),
+
+  // OS Credential Manager (Windows Credential Store / macOS Keychain)
+  getStoredToken: () => invoke<string>("get_stored_token"),
+  storeToken: (token: string) => invoke<void>("store_token", { token }),
+  deleteStoredToken: () => invoke<void>("delete_stored_token"),
+
+  // Portable mode
+  getPortableMode: () => invoke<boolean>("get_portable_mode"),
 };

@@ -54,9 +54,9 @@ export function Modal({
           width: typeof width === "number" ? `${width}px` : width,
           maxWidth: "calc(100vw - 32px)",
           maxHeight: typeof maxHeight === "string" ? maxHeight : `${maxHeight}px`,
-          background: "#282828",
+          background: "var(--color-bg-elevated)",
           borderRadius: "16px",
-          border: "1px solid rgba(255,255,255,0.1)",
+          border: "1px solid var(--color-border)",
           boxShadow: "0 24px 64px rgba(0,0,0,0.8)",
           display: "flex",
           flexDirection: "column",
@@ -78,7 +78,7 @@ export function Modal({
               style={{
                 fontSize: "18px",
                 fontWeight: 700,
-                color: "#fff",
+                color: "var(--color-text-primary)",
                 letterSpacing: "-0.2px",
               }}
             >
@@ -92,7 +92,7 @@ export function Modal({
                 borderRadius: "50%",
                 background: "rgba(255,255,255,0.08)",
                 border: "none",
-                color: "#b3b3b3",
+                color: "var(--color-text-secondary)",
                 fontSize: "16px",
                 display: "flex",
                 alignItems: "center",

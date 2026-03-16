@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { ipc } from "../../lib/ipc";
 import { useToastStore } from "../../store/toastStore";
 import { useRepoStore } from "../../store/repoStore";
-import type { StashEntry } from "../../types";
+import { useConfirmStore } from "../../store/confirmStore";
+import type { DiffResult, StashEntry } from "../../types";
 
 interface StashManagerProps {
   repoPath: string;
@@ -20,6 +21,9 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
   const [includeUntracked, setIncludeUntracked] = useState(true);
   const [saving, setSaving] = useState(false);
   const [actionIdx, setActionIdx] = useState<number | null>(null);
+  const [expandedStashIdx, setExpandedStashIdx] = useState<number | null>(null);
+  const [stashDiff, setStashDiff] = useState<DiffResult | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,7 +82,13 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
   };
 
   const handleDrop = async (index: number) => {
-    if (!confirm(`Drop stash@{${index}}? This cannot be undone.`)) return;
+    const ok = await useConfirmStore.getState().request({
+      title: "Drop stash?",
+      description: `Drop stash@{${index}}? This cannot be undone.`,
+      danger: true,
+      confirmLabel: "Drop",
+    });
+    if (!ok) return;
     setActionIdx(index);
     try {
       await ipc.dropStash(repoPath, index);
@@ -92,7 +102,13 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
   };
 
   const handleClearAll = async () => {
-    if (!confirm("Drop ALL stashes? This cannot be undone.")) return;
+    const ok = await useConfirmStore.getState().request({
+      title: "Clear all stashes?",
+      description: "Drop ALL stashes? This cannot be undone.",
+      danger: true,
+      confirmLabel: "Drop All",
+    });
+    if (!ok) return;
     for (const stash of [...stashes].reverse()) {
       try {
         await ipc.dropStash(repoPath, stash.index);
@@ -102,6 +118,25 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
     }
     addToast("info", "All stashes cleared");
     await load();
+  };
+
+  const handleToggleDiff = async (index: number) => {
+    if (expandedStashIdx === index) {
+      setExpandedStashIdx(null);
+      setStashDiff(null);
+      return;
+    }
+    setExpandedStashIdx(index);
+    setStashDiff(null);
+    setDiffLoading(true);
+    try {
+      const diff = await ipc.getStashDiff(repoPath, index);
+      setStashDiff(diff);
+    } catch (e) {
+      addToast("error", `Failed to load stash diff: ${e}`);
+    } finally {
+      setDiffLoading(false);
+    }
   };
 
   return (
@@ -121,12 +156,12 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
     >
       <div
         style={{
-          width: "520px",
+          width: "600px",
           maxWidth: "100%",
-          maxHeight: "80vh",
-          background: "#282828",
+          maxHeight: "84vh",
+          background: "var(--color-bg-elevated)",
           borderRadius: "16px",
-          border: "1px solid rgba(255,255,255,0.1)",
+          border: "1px solid var(--color-border)",
           boxShadow: "0 24px 64px rgba(0,0,0,0.8)",
           display: "flex",
           flexDirection: "column",
@@ -141,17 +176,17 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
             alignItems: "center",
             justifyContent: "space-between",
             padding: "20px 24px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            borderBottom: "1px solid var(--color-border-subtle)",
             flexShrink: 0,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <span style={{ fontSize: "18px" }}>📦</span>
             <div>
-              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#fff" }}>
+              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary)" }}>
                 Stash Manager
               </h2>
-              <p style={{ fontSize: "11px", color: "#6a6a6a" }}>
+              <p style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
                 {repoName ?? repoPath}
               </p>
             </div>
@@ -164,7 +199,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
               borderRadius: "50%",
               background: "rgba(255,255,255,0.08)",
               border: "none",
-              color: "#b3b3b3",
+              color: "var(--color-text-secondary)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -190,11 +225,11 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
         <div
           style={{
             padding: "16px 24px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            borderBottom: "1px solid var(--color-border-subtle)",
             flexShrink: 0,
           }}
         >
-          <p style={{ fontSize: "12px", fontWeight: 600, color: "#b3b3b3", marginBottom: "10px" }}>
+          <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: "10px" }}>
             Save current changes
           </p>
           <input
@@ -207,10 +242,10 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
             }}
             style={{
               width: "100%",
-              background: "#1e1e1e",
-              border: "1px solid rgba(255,255,255,0.1)",
+              background: "var(--color-bg-card)",
+              border: "1px solid var(--color-border)",
               borderRadius: "8px",
-              color: "#fff",
+              color: "var(--color-text-primary)",
               fontSize: "13px",
               padding: "9px 12px",
               marginBottom: "10px",
@@ -247,7 +282,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
                 onChange={(e) => setIncludeUntracked(e.target.checked)}
                 style={{ accentColor: "#1DB954", cursor: "pointer" }}
               />
-              <span style={{ fontSize: "12px", color: "#b3b3b3" }}>
+              <span style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
                 Include untracked files
               </span>
             </label>
@@ -291,7 +326,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
                 alignItems: "center",
                 justifyContent: "center",
                 gap: "10px",
-                color: "#6a6a6a",
+                color: "var(--color-text-muted)",
                 fontSize: "13px",
               }}
             >
@@ -306,7 +341,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
               style={{
                 padding: "48px 24px",
                 textAlign: "center",
-                color: "#535353",
+                color: "var(--color-text-disabled)",
                 fontSize: "13px",
               }}
             >
@@ -319,15 +354,17 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
             <div style={{ padding: "8px 0" }}>
               {stashes.map((stash) => {
                 const isActive = actionIdx === stash.index;
+                const isExpanded = expandedStashIdx === stash.index;
                 return (
+                  <div key={stash.index}>
                   <div
-                    key={stash.index}
                     style={{
                       display: "flex",
                       alignItems: "flex-start",
                       gap: "12px",
                       padding: "12px 24px",
-                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      borderBottom: isExpanded ? "none" : "1px solid rgba(255,255,255,0.04)",
+                      background: isExpanded ? "rgba(255,255,255,0.02)" : "transparent",
                     }}
                   >
                     {/* Index badge */}
@@ -335,7 +372,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
                       style={{
                         fontSize: "11px",
                         fontWeight: 700,
-                        color: "#6a6a6a",
+                        color: "var(--color-text-muted)",
                         background: "rgba(255,255,255,0.06)",
                         borderRadius: "8px",
                         padding: "2px 8px",
@@ -353,7 +390,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
                       <p
                         style={{
                           fontSize: "13px",
-                          color: "#fff",
+                          color: "var(--color-text-primary)",
                           fontWeight: 500,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -363,20 +400,41 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
                       >
                         {stash.message || "WIP on " + stash.branch}
                       </p>
-                      <p style={{ fontSize: "11px", color: "#6a6a6a" }}>
+                      <p style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
                         {stash.branch} · {stash.date}
                       </p>
                     </div>
 
                     {/* Actions */}
                     {!isActive ? (
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "6px",
-                          flexShrink: 0,
-                        }}
-                      >
+                      <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                        {/* View/hide diff toggle */}
+                        <button
+                          onClick={() => handleToggleDiff(stash.index)}
+                          title={isExpanded ? "Hide diff" : "View diff"}
+                          style={{
+                            padding: "4px 10px",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            color: isExpanded ? "#f59b00" : "#b3b3b3",
+                            background: isExpanded ? "rgba(245,155,0,0.12)" : "rgba(255,255,255,0.06)",
+                            border: `1px solid ${isExpanded ? "rgba(245,155,0,0.3)" : "rgba(255,255,255,0.1)"}`,
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            transition: "all 120ms ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isExpanded)
+                              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isExpanded)
+                              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+                          }}
+                        >
+                          {isExpanded ? "▲ Hide" : "▼ Diff"}
+                        </button>
+
                         {[
                           { label: "Apply", fn: () => handleApply(stash.index), color: "#1DB954" },
                           { label: "Pop", fn: () => handlePop(stash.index), color: "#3d9be9" },
@@ -414,7 +472,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
                           alignItems: "center",
                           gap: "6px",
                           fontSize: "11px",
-                          color: "#6a6a6a",
+                          color: "var(--color-text-muted)",
                           flexShrink: 0,
                         }}
                       >
@@ -425,6 +483,80 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
                         Working…
                       </div>
                     )}
+                  </div>
+
+                  {/* Inline diff panel */}
+                  {isExpanded && (
+                    <div
+                      style={{
+                        borderBottom: "1px solid var(--color-border-subtle)",
+                        background: "var(--color-bg-card)",
+                        maxHeight: "300px",
+                        overflowY: "auto",
+                      }}
+                    >
+                      {diffLoading ? (
+                        <div style={{ padding: "16px 24px", display: "flex", alignItems: "center", gap: "8px", color: "var(--color-text-muted)", fontSize: "12px" }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 0.8s linear infinite" }}>
+                            <circle cx="12" cy="12" r="10" stroke="#333" strokeWidth="3" />
+                            <path d="M12 2a10 10 0 0 1 10 10" stroke="#f59b00" strokeWidth="3" strokeLinecap="round" />
+                          </svg>
+                          Loading diff…
+                        </div>
+                      ) : stashDiff ? (
+                        <>
+                          <div style={{ padding: "5px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", display: "flex", gap: "12px", fontSize: "11px", background: "var(--color-bg-card)" }}>
+                            <span style={{ color: "#1DB954" }}>+{stashDiff.additions}</span>
+                            <span style={{ color: "#e5534b" }}>−{stashDiff.deletions}</span>
+                          </div>
+                          <div>
+                            {stashDiff.content.split("\n").map((line, i) => {
+                              const isAdd = line.startsWith("+") && !line.startsWith("+++");
+                              const isDel = line.startsWith("-") && !line.startsWith("---");
+                              const isHunk = line.startsWith("@@");
+                              const isHeader = line.startsWith("diff ") || line.startsWith("index ") || line.startsWith("---") || line.startsWith("+++");
+                              return (
+                                <div
+                                  key={i}
+                                  style={{
+                                    padding: "0 16px",
+                                    fontFamily: '"Cascadia Code", "Fira Code", monospace',
+                                    fontSize: "11px",
+                                    lineHeight: "18px",
+                                    whiteSpace: "pre",
+                                    overflowX: "hidden",
+                                    textOverflow: "ellipsis",
+                                    background: isAdd
+                                      ? "rgba(29,185,84,0.08)"
+                                      : isDel
+                                      ? "rgba(229,83,75,0.08)"
+                                      : isHunk
+                                      ? "rgba(61,155,233,0.05)"
+                                      : "transparent",
+                                    color: isAdd
+                                      ? "#4ec76e"
+                                      : isDel
+                                      ? "#e5534b"
+                                      : isHunk
+                                      ? "#3d9be9"
+                                      : isHeader
+                                      ? "#535353"
+                                      : "#b3b3b3",
+                                  }}
+                                >
+                                  {line || "\u00A0"}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ padding: "16px 24px", color: "var(--color-text-disabled)", fontSize: "12px" }}>
+                          No diff available
+                        </div>
+                      )}
+                    </div>
+                  )}
                   </div>
                 );
               })}
@@ -437,7 +569,7 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
           <div
             style={{
               padding: "14px 24px",
-              borderTop: "1px solid rgba(255,255,255,0.06)",
+              borderTop: "1px solid var(--color-border-subtle)",
               display: "flex",
               justifyContent: "flex-end",
               flexShrink: 0,

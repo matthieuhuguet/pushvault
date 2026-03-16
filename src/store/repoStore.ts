@@ -13,6 +13,7 @@ interface RepoStore {
   addRepo: (repo: RepoConfig) => Promise<void>;
   removeRepo: (path: string) => Promise<void>;
   updateRepo: (repo: RepoConfig) => Promise<void>;
+  reorderRepos: (fromIdx: number, toIdx: number) => Promise<void>;
 }
 
 const defaultConfig: AppConfig = {
@@ -22,6 +23,9 @@ const defaultConfig: AppConfig = {
   batch_size: 50,
   window_width: 1200,
   window_height: 750,
+  gpg_sign_commits: false,
+  gpg_key_id: "",
+  github_token: "",
 };
 
 export const useRepoStore = create<RepoStore>((set, get) => ({
@@ -65,8 +69,18 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
 
   refreshAllStatuses: async () => {
     const { config } = get();
-    if (!config) return;
-    await Promise.all(config.repos.map((r) => get().refreshStatus(r.path)));
+    if (!config || config.repos.length === 0) return;
+    try {
+      const allStatuses = await ipc.getAllRepoStatuses();
+      const newStatuses: Record<string, RepoStatus> = {};
+      for (const status of allStatuses) {
+        newStatuses[status.path] = status;
+      }
+      set({ statuses: newStatuses });
+    } catch {
+      // Fallback to individual calls
+      await Promise.all(config.repos.map((r) => get().refreshStatus(r.path)));
+    }
   },
 
   addRepo: async (repo: RepoConfig) => {
@@ -83,5 +97,16 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
   updateRepo: async (repo: RepoConfig) => {
     const config = await ipc.updateRepo(repo);
     set({ config });
+  },
+
+  reorderRepos: async (fromIdx: number, toIdx: number) => {
+    const { config } = get();
+    if (!config || fromIdx === toIdx) return;
+    const repos = [...config.repos];
+    const [moved] = repos.splice(fromIdx, 1);
+    repos.splice(toIdx, 0, moved);
+    const newConfig = { ...config, repos };
+    set({ config: newConfig });
+    await ipc.saveConfig(newConfig);
   },
 }));

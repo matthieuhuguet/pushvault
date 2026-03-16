@@ -22,6 +22,12 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .manage(state)
         .setup(|app| {
+            // Apply Windows 11 Mica dark effect to the title bar / window chrome
+            if let Some(window) = app.get_webview_window("main") {
+                #[cfg(target_os = "windows")]
+                let _ = window_vibrancy::apply_mica(&window, Some(true));
+            }
+
             // Build tray menu
             let show_item = MenuItem::with_id(app, "show", "Show PushVault", true, None::<&str>)?;
             let sync_item = MenuItem::with_id(app, "sync", "Sync All", true, None::<&str>)?;
@@ -68,7 +74,21 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                // Minimize to tray instead of closing
+                // Save window state before minimizing to tray
+                if let Ok(size) = window.inner_size() {
+                    let app = window.app_handle();
+                    if let Some(state) = app.try_state::<crate::state::AppState>() {
+                        let config = state.config.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let mut cfg = config.write().await;
+                            cfg.window_width = size.width;
+                            cfg.window_height = size.height;
+                            drop(cfg);
+                            let read_cfg = config.read().await;
+                            let _ = crate::config::save_config(&*read_cfg);
+                        });
+                    }
+                }
                 api.prevent_close();
                 let _ = window.hide();
             }
@@ -100,11 +120,15 @@ pub fn run() {
             commands::git::create_branch,
             commands::git::switch_branch,
             commands::git::delete_branch,
+            commands::git::rename_branch,
+            commands::git::merge_branch,
+            commands::git::push_branch,
             commands::git::get_conflicted_files,
             commands::git::resolve_using_ours,
             commands::git::resolve_using_theirs,
             commands::git::abort_merge,
             commands::git::get_commit_diff,
+            commands::git::get_stash_diff,
             commands::git::delete_untracked_file,
             commands::git::sync_repo_with_progress,
             commands::git::list_tags,
@@ -114,6 +138,44 @@ pub fn run() {
             commands::git::revert_commit,
             commands::git::cherry_pick_commit,
             commands::git::get_remote_url,
+            commands::git::stage_hunk,
+            commands::git::discard_hunk,
+            // maintenance
+            commands::git::git_gc,
+            commands::git::remote_prune,
+            commands::git::fetch_prune,
+            commands::git::get_head_info,
+            commands::git::branch_from_head,
+            commands::git::amend_commit_message,
+            commands::git::get_last_commit_message,
+            commands::git::push_tags,
+            // worktree
+            commands::git::list_worktrees,
+            commands::git::add_worktree,
+            commands::git::remove_worktree,
+            // submodules
+            commands::git::list_submodules,
+            commands::git::update_submodules,
+            commands::git::add_submodule,
+            commands::git::remove_submodule,
+            // interactive rebase
+            commands::git::get_rebase_commits,
+            commands::git::start_interactive_rebase,
+            commands::git::rebase_continue,
+            commands::git::rebase_abort,
+            commands::git::rebase_in_progress,
+            // git lfs
+            commands::git::detect_lfs,
+            commands::git::list_lfs_tracks,
+            commands::git::lfs_track,
+            commands::git::lfs_untrack,
+            // git bisect
+            commands::git::bisect_status,
+            commands::git::bisect_start,
+            commands::git::bisect_good,
+            commands::git::bisect_bad,
+            commands::git::bisect_skip,
+            commands::git::bisect_reset,
             // config commands
             commands::config::load_config_cmd,
             commands::config::save_config_cmd,
@@ -122,6 +184,7 @@ pub fn run() {
             commands::config::update_repo,
             // system commands
             commands::system::open_in_explorer,
+            commands::system::reveal_in_explorer,
             commands::system::open_in_vscode,
             commands::system::open_in_terminal,
             commands::system::quit_app,
@@ -134,6 +197,22 @@ pub fn run() {
             commands::system::init_repo,
             commands::system::get_file_at_commit,
             commands::system::get_all_repo_statuses,
+            commands::system::save_window_state,
+            commands::system::get_github_ci_status,
+            commands::system::get_github_workflow_runs,
+            commands::system::get_github_prs,
+            commands::system::get_github_issues,
+            commands::system::setup_file_watchers,
+            commands::system::get_launch_at_startup,
+            commands::system::set_launch_at_startup,
+            commands::system::list_github_releases,
+            commands::system::create_github_release,
+            // credential store
+            commands::system::get_stored_token,
+            commands::system::store_token,
+            commands::system::delete_stored_token,
+            // portable mode
+            commands::system::get_portable_mode,
         ])
         .run(tauri::generate_context!())
         .expect("error while running PushVault");

@@ -6,8 +6,8 @@ interface UIStore {
   setActiveTab: (tab: NavTab) => void;
   selectedRepoPath: string | null;
   setSelectedRepoPath: (path: string | null) => void;
-  activePanel: "staging" | "history" | "stash" | "branches" | "conflicts" | "tags" | "gitignore" | "scan" | null;
-  setActivePanel: (panel: "staging" | "history" | "stash" | "branches" | "conflicts" | "tags" | "gitignore" | "scan" | null) => void;
+  activePanel: "staging" | "history" | "stash" | "branches" | "conflicts" | "tags" | "gitignore" | "scan" | "worktrees" | "submodules" | "lfs" | "bisect" | "rebase" | null;
+  setActivePanel: (panel: "staging" | "history" | "stash" | "branches" | "conflicts" | "tags" | "gitignore" | "scan" | "worktrees" | "submodules" | "lfs" | "bisect" | "rebase" | null) => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   activeFilter: string;
@@ -16,6 +16,8 @@ interface UIStore {
   setIsSyncing: (v: boolean) => void;
   syncProgress: string;
   setSyncProgress: (msg: string) => void;
+  theme: "dark" | "light";
+  setTheme: (theme: "dark" | "light") => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -39,4 +41,7 @@ export const useUIStore = create<UIStore>((set) => ({
 
   syncProgress: "",
   setSyncProgress: (syncProgress) => set({ syncProgress }),
+
+  theme: "dark",
+  setTheme: (theme) => set({ theme }),
 }));

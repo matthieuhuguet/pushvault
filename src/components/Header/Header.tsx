@@ -67,8 +67,8 @@ export function Header() {
     <header
       style={{
         height: "80px",
-        background: "#121212",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        background: "var(--color-bg-primary)",
+        borderBottom: "1px solid var(--color-border-subtle)",
         display: "flex",
         alignItems: "center",
         paddingLeft: "28px",
@@ -85,7 +85,7 @@ export function Header() {
           style={{
             fontSize: "22px",
             fontWeight: 700,
-            color: "#fff",
+            color: "var(--color-text-primary)",
             lineHeight: 1.2,
             letterSpacing: "-0.3px",
           }}
@@ -95,7 +95,7 @@ export function Header() {
         <p
           style={{
             fontSize: "12px",
-            color: "#6a6a6a",
+            color: "var(--color-text-muted)",
             marginTop: "1px",
           }}
         >
@@ -112,8 +112,8 @@ export function Header() {
           display: "flex",
           alignItems: "center",
           gap: "10px",
-          background: inputFocused ? "#2a2a2a" : "#1a1a1a",
-          border: `1px solid ${inputFocused ? "#1DB954" : "rgba(255,255,255,0.1)"}`,
+          background: inputFocused ? "var(--color-bg-hover)" : "var(--color-bg-elevated)",
+          border: `1px solid ${inputFocused ? "var(--color-accent)" : "var(--color-border)"}`,
           borderRadius: "24px",
           padding: "8px 16px",
           width: "280px",
@@ -126,7 +126,7 @@ export function Header() {
           id="search-input"
           ref={inputRef}
           type="text"
-          placeholder="Search repos…"
+          placeholder="Search repos…  Ctrl+K"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onFocus={() => setInputFocused(true)}
@@ -136,7 +136,7 @@ export function Header() {
             background: "none",
             border: "none",
             outline: "none",
-            color: "#fff",
+            color: "var(--color-text-primary)",
             fontSize: "13px",
             padding: 0,
             minWidth: 0,
@@ -155,7 +155,7 @@ export function Header() {
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              color: "#b3b3b3",
+              color: "var(--color-text-secondary)",
               fontSize: "10px",
               padding: 0,
               flexShrink: 0,
@@ -177,9 +177,9 @@ export function Header() {
           <kbd
             style={{
               fontSize: "10px",
-              color: "#6a6a6a",
+              color: "var(--color-text-muted)",
               background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.1)",
+              border: "1px solid var(--color-border)",
               borderRadius: "4px",
               padding: "1px 5px",
               letterSpacing: "0.05em",

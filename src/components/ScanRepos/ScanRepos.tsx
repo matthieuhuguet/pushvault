@@ -69,10 +69,10 @@ export function ScanRepos({ onClose }: Props) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "#282828", borderRadius: "12px", width: "560px", maxWidth: "95vw", maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
+      <div style={{ background: "var(--color-bg-elevated)", borderRadius: "12px", width: "560px", maxWidth: "95vw", maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
         <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #3d3d3d", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700 }}>Scan for Repositories</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#b3b3b3", cursor: "pointer", fontSize: "20px" }}>&#x2715;</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--color-text-secondary)", cursor: "pointer", fontSize: "20px" }}>&#x2715;</button>
         </div>
 
         <div style={{ padding: "16px 24px", borderBottom: "1px solid #3d3d3d" }}>
@@ -82,7 +82,7 @@ export function ScanRepos({ onClose }: Props) {
             style={{ background: "#1DB954", border: "none", borderRadius: "500px", padding: "10px 20px", color: "#000", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}
           >{scanning ? "Scanning..." : "Choose Folder to Scan"}</button>
           {found.length > 0 && (
-            <span style={{ marginLeft: "12px", fontSize: "13px", color: "#b3b3b3" }}>
+            <span style={{ marginLeft: "12px", fontSize: "13px", color: "var(--color-text-secondary)" }}>
               Found {found.length} repositories
             </span>
           )}
@@ -92,7 +92,7 @@ export function ScanRepos({ onClose }: Props) {
           <>
             <div style={{ padding: "8px 24px", borderBottom: "1px solid #3d3d3d", display: "flex", alignItems: "center", gap: "8px" }}>
               <input type="checkbox" checked={selected.size === found.length} onChange={toggleAll} style={{ accentColor: "#1DB954" }} />
-              <span style={{ fontSize: "13px", color: "#b3b3b3" }}>Select all ({selected.size}/{found.length})</span>
+              <span style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>Select all ({selected.size}/{found.length})</span>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: "8px 24px" }}>
               {found.map(p => {
@@ -102,15 +102,15 @@ export function ScanRepos({ onClose }: Props) {
                   <label key={p} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 0", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                     <input type="checkbox" checked={selected.has(p)} onChange={() => toggle(p)} style={{ accentColor: "#1DB954" }} />
                     <div>
-                      <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "#fff" }}>{name}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#535353", fontFamily: "monospace" }}>{p}</p>
+                      <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--color-text-primary)" }}>{name}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-text-disabled)", fontFamily: "monospace" }}>{p}</p>
                     </div>
                   </label>
                 );
               })}
             </div>
             <div style={{ padding: "16px 24px", borderTop: "1px solid #3d3d3d", display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-              <button onClick={onClose} style={{ background: "transparent", border: "1px solid #535353", borderRadius: "500px", padding: "8px 20px", color: "#fff", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
+              <button onClick={onClose} style={{ background: "transparent", border: "1px solid #535353", borderRadius: "500px", padding: "8px 20px", color: "var(--color-text-primary)", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
               <button
                 onClick={handleAdd}
                 disabled={adding || selected.size === 0}
@@ -120,7 +120,7 @@ export function ScanRepos({ onClose }: Props) {
           </>
         )}
         {found.length === 0 && !scanning && (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "32px", flexDirection: "column", gap: "12px", color: "#535353" }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "32px", flexDirection: "column", gap: "12px", color: "var(--color-text-disabled)" }}>
             <p style={{ fontSize: "14px" }}>Click "Choose Folder to Scan" to find git repositories</p>
           </div>
         )}

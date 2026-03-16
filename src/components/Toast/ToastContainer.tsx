@@ -72,7 +72,7 @@ function ToastItem({ toast }: { toast: Toast }) {
     <div
       style={{
         position: "relative",
-        background: "#282828",
+        background: "var(--color-bg-elevated)",
         border: `1px solid ${colors.border}33`,
         borderLeft: `3px solid ${colors.border}`,
         borderRadius: "10px",
@@ -97,7 +97,7 @@ function ToastItem({ toast }: { toast: Toast }) {
           <p
             style={{
               fontSize: "13px",
-              color: "#fff",
+              color: "var(--color-text-primary)",
               lineHeight: 1.45,
               wordBreak: "break-word",
             }}
@@ -144,7 +144,7 @@ function ToastItem({ toast }: { toast: Toast }) {
             background: "rgba(255,255,255,0.08)",
             border: "none",
             cursor: "pointer",
-            color: "#b3b3b3",
+            color: "var(--color-text-secondary)",
             fontSize: "11px",
             lineHeight: 1,
             transition: "background 120ms ease, color 120ms ease",

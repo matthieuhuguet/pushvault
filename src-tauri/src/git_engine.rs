@@ -4,10 +4,25 @@ use std::process::Command;
 use chrono::{DateTime, TimeZone, Utc};
 use git2::{DiffOptions, Repository, Signature, Sort};
 
+/// Create a `Command` for git that hides the console window on Windows.
+/// This prevents terminal windows from flashing every time a subprocess runs.
+#[cfg(target_os = "windows")]
+fn git_cmd() -> Command {
+    use std::os::windows::process::CommandExt;
+    let mut cmd = Command::new("git");
+    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    cmd
+}
+
+#[cfg(not(target_os = "windows"))]
+fn git_cmd() -> Command {
+    Command::new("git")
+}
+
 use crate::error::PvError;
 use crate::models::{
-    BranchInfo, CommitInfo, ConflictFile, DiffResult, FileEntry, RepoStatus, StashEntry,
-    SyncResult, SyncState, TagInfo,
+    BisectInfo, BranchInfo, CommitInfo, ConflictFile, DiffResult, FileEntry, RepoStatus, StashEntry,
+    SubmoduleInfo, SyncResult, SyncState, TagInfo, WorktreeInfo,
 };
 
 // ---------------------------------------------------------------------------
@@ -53,7 +68,7 @@ struct PortcelainV2 {
 fn parse_porcelain_v2(repo_path: &str) -> PortcelainV2 {
     let mut result = PortcelainV2::default();
 
-    let output = Command::new("git")
+    let output = git_cmd()
         .args(["status", "--porcelain=v2", "--branch"])
         .current_dir(repo_path)
         .output();
@@ -409,6 +424,20 @@ pub async fn sync_repo(repo_path: String, message: String) -> Result<SyncResult,
     })
 }
 
+/// Convert git2 Delta status to lowercase string matching what the frontend expects.
+fn delta_status_str(delta: git2::Delta) -> String {
+    match delta {
+        git2::Delta::Added => "added".into(),
+        git2::Delta::Deleted => "deleted".into(),
+        git2::Delta::Modified => "modified".into(),
+        git2::Delta::Renamed => "renamed".into(),
+        git2::Delta::Copied => "added".into(),
+        git2::Delta::Untracked => "untracked".into(),
+        git2::Delta::Conflicted => "conflict".into(),
+        _ => format!("{:?}", delta).to_lowercase(),
+    }
+}
+
 pub async fn get_staged_files(repo_path: String) -> Result<Vec<FileEntry>, PvError> {
     tokio::task::spawn_blocking(move || {
         let repo = Repository::open(&repo_path)
@@ -434,7 +463,7 @@ pub async fn get_staged_files(repo_path: String) -> Result<Vec<FileEntry>, PvErr
                     .or_else(|| delta.old_file().path())
                     .map(|p| p.to_string_lossy().to_string())
                     .unwrap_or_default();
-                let status = format!("{:?}", delta.status());
+                let status = delta_status_str(delta.status());
                 let size = delta.new_file().size();
                 files.push(FileEntry {
                     path,
@@ -472,7 +501,7 @@ pub async fn get_unstaged_files(repo_path: String) -> Result<Vec<FileEntry>, PvE
                     .or_else(|| delta.old_file().path())
                     .map(|p| p.to_string_lossy().to_string())
                     .unwrap_or_default();
-                let status = format!("{:?}", delta.status());
+                let status = delta_status_str(delta.status());
                 let size = delta.new_file().size();
                 files.push(FileEntry {
                     path,
@@ -487,7 +516,10 @@ pub async fn get_unstaged_files(repo_path: String) -> Result<Vec<FileEntry>, PvE
             None,
         )?;
 
-        // Also include untracked files
+        // Also include untracked files (deduplicate against diff results)
+        let existing_paths: std::collections::HashSet<String> =
+            files.iter().map(|f| f.path.clone()).collect();
+
         let statuses = repo.statuses(Some(
             git2::StatusOptions::new()
                 .include_untracked(true)
@@ -499,11 +531,14 @@ pub async fn get_unstaged_files(repo_path: String) -> Result<Vec<FileEntry>, PvE
                     .path()
                     .unwrap_or("")
                     .to_string();
+                if existing_paths.contains(&path) {
+                    continue; // already listed from the diff
+                }
                 let full_path = std::path::Path::new(&repo_path).join(&path);
                 let size = std::fs::metadata(&full_path).map(|m| m.len()).unwrap_or(0);
                 files.push(FileEntry {
                     path,
-                    status: "Untracked".into(),
+                    status: "untracked".into(),
                     size,
                     is_staged: false,
                 });
@@ -520,13 +555,26 @@ pub async fn stage_file(repo_path: String, file_path: String) -> Result<(), PvEr
     tokio::task::spawn_blocking(move || {
         let repo = Repository::open(&repo_path)
             .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
-        let mut index = repo.index()?;
-        index.add_path(Path::new(&file_path))?;
-        index.write()?;
+        let workdir = repo
+            .workdir()
+            .ok_or_else(|| PvError::InvalidPath("bare repo".into()))?
+            .to_path_buf();
+
+        // Use subprocess so nested repos, spaces, and special chars all work
+        let output = git_cmd()
+            .args(["add", "--", &file_path])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if !output.status.success() {
+            let err = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(PvError::Config(format!("git add failed: {err}")));
+        }
         Ok(())
     })
     .await
-    .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+    .map_err(|e| PvError::Config(e.to_string()))?
 }
 
 pub async fn unstage_file(repo_path: String, file_path: String) -> Result<(), PvError> {
@@ -559,26 +607,76 @@ pub async fn discard_file(repo_path: String, file_path: String) -> Result<(), Pv
     tokio::task::spawn_blocking(move || {
         let repo = Repository::open(&repo_path)
             .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
-        let mut checkout = git2::build::CheckoutBuilder::new();
-        checkout.path(&file_path).force();
-        repo.checkout_head(Some(&mut checkout))?;
+        let workdir = repo
+            .workdir()
+            .ok_or_else(|| PvError::InvalidPath("bare repo".into()))?
+            .to_path_buf();
+
+        // Determine if HEAD exists (there might be no commits yet)
+        let has_head = repo.head().is_ok();
+        let full_path = workdir.join(&file_path);
+
+        if !has_head {
+            // No HEAD yet — just delete the file from disk if it exists
+            if full_path.exists() {
+                std::fs::remove_file(&full_path).map_err(PvError::Io)?;
+            }
+            return Ok(());
+        }
+
+        // Check if the file is tracked in HEAD
+        let head_commit = repo.head()?.peel_to_commit()?;
+        let head_tree = head_commit.tree()?;
+        let is_tracked = head_tree.get_path(Path::new(&file_path)).is_ok();
+
+        if is_tracked {
+            // Restore to HEAD state via subprocess
+            let output = git_cmd()
+                .args(["checkout", "HEAD", "--", &file_path])
+                .current_dir(&workdir)
+                .output()
+                .map_err(PvError::Io)?;
+            if !output.status.success() {
+                let err = String::from_utf8_lossy(&output.stderr).to_string();
+                return Err(PvError::Config(format!("git checkout failed: {err}")));
+            }
+        } else {
+            // Untracked/new file — delete from disk
+            if full_path.exists() {
+                std::fs::remove_file(&full_path).map_err(PvError::Io)?;
+            }
+        }
         Ok(())
     })
     .await
-    .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+    .map_err(|e| PvError::Config(e.to_string()))?
 }
 
 pub async fn stage_all(repo_path: String) -> Result<(), PvError> {
     tokio::task::spawn_blocking(move || {
         let repo = Repository::open(&repo_path)
             .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
-        let mut index = repo.index()?;
-        index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
-        index.write()?;
+        let workdir = repo
+            .workdir()
+            .ok_or_else(|| PvError::InvalidPath("bare repo".into()))?
+            .to_path_buf();
+
+        // Use subprocess: git add --all handles nested repos, submodules,
+        // special characters, and all edge cases that libgit2's add_all misses.
+        let output = git_cmd()
+            .args(["add", "--all"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if !output.status.success() {
+            let err = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(PvError::Config(format!("git add --all failed: {err}")));
+        }
         Ok(())
     })
     .await
-    .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+    .map_err(|e| PvError::Config(e.to_string()))?
 }
 
 pub async fn unstage_all(repo_path: String) -> Result<(), PvError> {
@@ -634,6 +732,68 @@ pub async fn commit(
     })
     .await
     .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+}
+
+/// Commit using a subprocess so GPG signing works with the OS GPG agent.
+/// Pass `gpg_key_id = ""` to use git's configured default signing key.
+pub async fn commit_signed(
+    repo_path: String,
+    message: String,
+    amend: bool,
+    gpg_key_id: String,
+) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let mut args: Vec<String> = vec!["commit".into()];
+
+        // GPG signing flags
+        if !gpg_key_id.is_empty() {
+            args.push(format!("--gpg-sign={}", gpg_key_id));
+        } else {
+            args.push("-S".into());
+        }
+
+        if amend {
+            args.push("--amend".into());
+            args.push("--no-edit".into());
+            // Override with new message if provided
+            args.push("-m".into());
+            args.push(message.clone());
+        } else {
+            args.push("-m".into());
+            args.push(message.clone());
+        }
+
+        let output = git_cmd()
+            .args(&args)
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if output.status.success() {
+            // Extract the commit hash from the output
+            // git commit outputs: "[branch abc1234] message"
+            let out = String::from_utf8_lossy(&output.stdout).to_string();
+            let hash = out
+                .lines()
+                .find(|l| l.contains('[') && l.contains(']'))
+                .and_then(|l| l.find(']').map(|i| &l[..i]))
+                .and_then(|l| l.rfind(' ').map(|i| l[i + 1..].trim().to_string()))
+                .unwrap_or_else(|| "unknown".into());
+            Ok(hash)
+        } else {
+            Err(PvError::Config(
+                String::from_utf8_lossy(&output.stderr).to_string(),
+            ))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
 }
 
 pub async fn get_diff(
@@ -1024,6 +1184,63 @@ pub async fn delete_branch(repo_path: String, name: String, force: bool) -> Resu
     .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
 }
 
+pub async fn rename_branch(repo_path: String, old_name: String, new_name: String) -> Result<(), PvError> {
+    tokio::task::spawn_blocking(move || {
+        let output = git_cmd()
+            .args(["branch", "-m", &old_name, &new_name])
+            .current_dir(&repo_path)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if !output.status.success() {
+            return Err(PvError::Git(git2::Error::from_str(
+                &String::from_utf8_lossy(&output.stderr),
+            )));
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+}
+
+pub async fn merge_branch(repo_path: String, branch_name: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let output = git_cmd()
+            .args(["merge", "--no-ff", &branch_name, "-m", &format!("Merge branch '{}'", branch_name)])
+            .current_dir(&repo_path)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(PvError::Git(git2::Error::from_str(&stderr)));
+        }
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    })
+    .await
+    .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+}
+
+pub async fn push_branch(repo_path: String, branch_name: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let output = git_cmd()
+            .args(["push", "-u", "origin", &branch_name])
+            .current_dir(&repo_path)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(PvError::Git(git2::Error::from_str(&stderr)));
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let stderr_msg = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Ok(if stdout.is_empty() { stderr_msg } else { stdout })
+    })
+    .await
+    .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+}
+
 pub async fn get_conflicted_files(repo_path: String) -> Result<Vec<ConflictFile>, PvError> {
     tokio::task::spawn_blocking(move || {
         let repo = Repository::open(&repo_path)
@@ -1105,7 +1322,7 @@ fn parse_conflict_markers(content: &str) -> (String, String) {
 pub async fn resolve_using_ours(repo_path: String, file_path: String) -> Result<(), PvError> {
     tokio::task::spawn_blocking(move || {
         // Use `git checkout --ours` equivalent via Command
-        let output = Command::new("git")
+        let output = git_cmd()
             .args(["checkout", "--ours", "--", &file_path])
             .current_dir(&repo_path)
             .output()
@@ -1131,7 +1348,7 @@ pub async fn resolve_using_ours(repo_path: String, file_path: String) -> Result<
 
 pub async fn resolve_using_theirs(repo_path: String, file_path: String) -> Result<(), PvError> {
     tokio::task::spawn_blocking(move || {
-        let output = Command::new("git")
+        let output = git_cmd()
             .args(["checkout", "--theirs", "--", &file_path])
             .current_dir(&repo_path)
             .output()
@@ -1212,6 +1429,43 @@ pub async fn get_commit_diff(repo_path: String, hash: String) -> Result<DiffResu
 pub async fn delete_untracked_file(repo_path: String, file_path: String) -> Result<(), PvError> {
     let full = std::path::Path::new(&repo_path).join(&file_path);
     tokio::fs::remove_file(full).await.map_err(PvError::Io)
+}
+
+pub async fn get_stash_diff(repo_path: String, index: usize) -> Result<DiffResult, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let output = git_cmd()
+            .args(["stash", "show", "-p", &format!("stash@{{{}}}", index)])
+            .current_dir(&repo_path)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if !output.status.success() {
+            return Err(PvError::Git(git2::Error::from_str(
+                &String::from_utf8_lossy(&output.stderr),
+            )));
+        }
+
+        let raw = String::from_utf8_lossy(&output.stdout);
+        let mut additions: u32 = 0;
+        let mut deletions: u32 = 0;
+
+        for line in raw.lines() {
+            if line.starts_with('+') && !line.starts_with("+++") {
+                additions += 1;
+            } else if line.starts_with('-') && !line.starts_with("---") {
+                deletions += 1;
+            }
+        }
+
+        Ok(DiffResult {
+            content: raw.into_owned(),
+            additions,
+            deletions,
+            file_path: format!("stash@{{{}}}", index),
+        })
+    })
+    .await
+    .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
 }
 
 pub async fn list_tags(repo_path: String) -> Result<Vec<TagInfo>, PvError> {
@@ -1385,4 +1639,1180 @@ pub async fn get_remote_url(repo_path: String) -> Result<String, PvError> {
     })
     .await
     .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+}
+
+// ---------------------------------------------------------------------------
+// Hunk-level staging
+// ---------------------------------------------------------------------------
+
+pub async fn stage_hunk(repo_path: String, patch: String) -> Result<(), PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)?;
+        let workdir = repo
+            .workdir()
+            .ok_or_else(|| PvError::InvalidPath("bare repo has no workdir".into()))?
+            .to_path_buf();
+
+        let mut child = git_cmd()
+            .args(["apply", "--cached", "--recount", "-"])
+            .current_dir(&workdir)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(PvError::Io)?;
+
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write;
+            stdin.write_all(patch.as_bytes()).map_err(PvError::Io)?;
+        }
+
+        let output = child.wait_with_output().map_err(PvError::Io)?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(PvError::Config(format!("git apply --cached failed: {stderr}")));
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+pub async fn discard_hunk(repo_path: String, patch: String) -> Result<(), PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)?;
+        let workdir = repo
+            .workdir()
+            .ok_or_else(|| PvError::InvalidPath("bare repo has no workdir".into()))?
+            .to_path_buf();
+
+        let mut child = git_cmd()
+            .args(["apply", "--reverse", "--recount", "-"])
+            .current_dir(&workdir)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(PvError::Io)?;
+
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write;
+            stdin.write_all(patch.as_bytes()).map_err(PvError::Io)?;
+        }
+
+        let output = child.wait_with_output().map_err(PvError::Io)?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(PvError::Config(format!("git apply --reverse failed: {stderr}")));
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+// ---------------------------------------------------------------------------
+// Git maintenance
+// ---------------------------------------------------------------------------
+
+/// Run `git gc --prune=now` to compact the repository and remove unreachable objects.
+pub async fn git_gc(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::InvalidPath("bare repo".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["gc", "--prune=now", "--quiet"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if !output.status.success() {
+            let err = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(PvError::Config(format!("git gc failed: {err}")));
+        }
+        let out = String::from_utf8_lossy(&output.stderr).to_string();
+        Ok(if out.trim().is_empty() { "GC complete — nothing to clean up.".to_string() } else { out.trim().to_string() })
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Prune stale remote-tracking branches with `git remote prune <remote>`.
+pub async fn remote_prune(repo_path: String, remote: String) -> Result<Vec<String>, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::InvalidPath("bare repo".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["remote", "prune", &remote])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if !output.status.success() {
+            let err = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(PvError::Config(format!("git remote prune failed: {err}")));
+        }
+
+        // Parse pruned branches from output
+        let combined = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let pruned: Vec<String> = combined
+            .lines()
+            .filter(|l| l.contains("pruned") || l.contains("[pruned]"))
+            .map(|l| l.trim().to_string())
+            .collect();
+
+        Ok(pruned)
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Fetch from all remotes AND prune stale tracking branches in one pass.
+pub async fn fetch_prune(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::InvalidPath("bare repo".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["fetch", "--all", "--prune"])
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        let combined = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        if !output.status.success() {
+            return Err(PvError::Config(format!("fetch --prune failed: {combined}")));
+        }
+
+        Ok(if combined.trim().is_empty() {
+            "Fetch complete — already up to date.".to_string()
+        } else {
+            combined.trim().to_string()
+        })
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Returns `(is_detached, current_commit_hash, current_commit_message)`.
+pub async fn get_head_info(repo_path: String) -> Result<(bool, String, String), PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+
+        let head = repo.head()?;
+        let is_detached = repo.head_detached()?;
+        let commit = head.peel_to_commit()?;
+        let hash = commit.id().to_string();
+        let message = commit.summary().unwrap_or("").to_string();
+
+        Ok((is_detached, hash, message))
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Create a new branch at the current (possibly detached) HEAD and switch to it.
+pub async fn branch_from_head(repo_path: String, branch_name: String) -> Result<(), PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::InvalidPath("bare repo".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["checkout", "-b", &branch_name])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if !output.status.success() {
+            let err = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(PvError::Config(format!("git checkout -b failed: {err}")));
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Amend the last commit with a new message (leaves staged contents unchanged).
+pub async fn amend_commit_message(repo_path: String, message: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::InvalidPath("bare repo".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["commit", "--amend", "--no-edit", &format!("--message={message}")])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if !output.status.success() {
+            let err = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(PvError::Config(format!("git commit --amend failed: {err}")));
+        }
+
+        // Return the new commit hash
+        let hash_out = git_cmd()
+            .args(["rev-parse", "HEAD"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+        let hash = String::from_utf8_lossy(&hash_out.stdout).trim().to_string();
+        Ok(hash)
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Push all local tags to the remote (`git push --tags`).
+pub async fn push_tags(repo_path: String, remote: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let workdir = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?
+            .workdir()
+            .ok_or_else(|| PvError::Config("Bare repo".into()))?
+            .to_path_buf();
+
+        let remote_arg = if remote.is_empty() { "origin".to_string() } else { remote };
+        let output = git_cmd()
+            .args(["push", &remote_arg, "--tags"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        } else {
+            Err(PvError::Config(String::from_utf8_lossy(&output.stderr).to_string()))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Get the full message of the last commit (for pre-filling the amend field).
+pub async fn get_last_commit_message(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let head_commit = repo.head()?.peel_to_commit()?;
+        let message = head_commit.message().unwrap_or("").to_string();
+        Ok(message.trim().to_string())
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+// ---------------------------------------------------------------------------
+// Worktree management
+// ---------------------------------------------------------------------------
+
+/// List all worktrees for a repository using `git worktree list --porcelain`.
+pub async fn list_worktrees(repo_path: String) -> Result<Vec<WorktreeInfo>, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir().ok_or(PvError::Config("bare repository".into()))?.to_path_buf();
+
+        let output = git_cmd()
+            .args(["worktree", "list", "--porcelain"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        let text = String::from_utf8_lossy(&output.stdout).to_string();
+
+        let mut worktrees: Vec<WorktreeInfo> = Vec::new();
+        let mut cur_path = String::new();
+        let mut cur_head = String::new();
+        let mut cur_branch = String::new();
+        let mut cur_locked = false;
+        let mut cur_prunable = false;
+
+        let flush = |path: &mut String,
+                     head: &mut String,
+                     branch: &mut String,
+                     locked: &mut bool,
+                     prunable: &mut bool,
+                     is_main: bool,
+                     out: &mut Vec<WorktreeInfo>| {
+            if !path.is_empty() {
+                out.push(WorktreeInfo {
+                    path: std::mem::take(path),
+                    head: std::mem::take(head),
+                    branch: std::mem::take(branch),
+                    is_main,
+                    is_locked: *locked,
+                    is_prunable: *prunable,
+                });
+                *locked = false;
+                *prunable = false;
+            }
+        };
+
+        for line in text.lines() {
+            if line.is_empty() {
+                let is_main = worktrees.is_empty();
+                flush(
+                    &mut cur_path,
+                    &mut cur_head,
+                    &mut cur_branch,
+                    &mut cur_locked,
+                    &mut cur_prunable,
+                    is_main,
+                    &mut worktrees,
+                );
+            } else if let Some(rest) = line.strip_prefix("worktree ") {
+                cur_path = rest.to_string();
+            } else if let Some(rest) = line.strip_prefix("HEAD ") {
+                cur_head = rest.chars().take(8).collect();
+            } else if let Some(rest) = line.strip_prefix("branch ") {
+                cur_branch = rest.strip_prefix("refs/heads/")
+                    .unwrap_or(rest)
+                    .to_string();
+            } else if line == "detached" {
+                cur_branch = "(detached HEAD)".to_string();
+            } else if line.starts_with("locked") {
+                cur_locked = true;
+            } else if line.starts_with("prunable") {
+                cur_prunable = true;
+            }
+        }
+
+        // Flush last block (no trailing blank line in some git versions)
+        let is_main = worktrees.is_empty();
+        flush(
+            &mut cur_path,
+            &mut cur_head,
+            &mut cur_branch,
+            &mut cur_locked,
+            &mut cur_prunable,
+            is_main,
+            &mut worktrees,
+        );
+
+        Ok(worktrees)
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Add a new worktree. Pass `new_branch = true` to create a fresh branch
+/// at the same time (`git worktree add -b <branch> <path>`).
+pub async fn add_worktree(
+    repo_path: String,
+    path: String,
+    branch: String,
+    new_branch: bool,
+) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir().ok_or(PvError::Config("bare repository".into()))?.to_path_buf();
+
+        let mut args: Vec<&str> = vec!["worktree", "add"];
+
+        // -b flag must come before the path
+        if new_branch && !branch.is_empty() {
+            args.push("-b");
+        }
+
+        if !branch.is_empty() {
+            args.push(branch.as_str());
+        }
+        args.push(path.as_str());
+
+        // Reorder: git worktree add [-b branch] path [branch]
+        // Correct order for existing branch: git worktree add <path> <branch>
+        // Correct order for new branch:      git worktree add -b <branch> <path>
+        let final_args: Vec<String> = if new_branch && !branch.is_empty() {
+            vec![
+                "worktree".into(),
+                "add".into(),
+                "-b".into(),
+                branch.clone(),
+                path.clone(),
+            ]
+        } else if !branch.is_empty() {
+            vec![
+                "worktree".into(),
+                "add".into(),
+                path.clone(),
+                branch.clone(),
+            ]
+        } else {
+            vec!["worktree".into(), "add".into(), path.clone()]
+        };
+
+        let output = git_cmd()
+            .args(&final_args)
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        } else {
+            Err(PvError::Config(
+                String::from_utf8_lossy(&output.stderr).to_string(),
+            ))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Remove a linked worktree. The main worktree cannot be removed.
+pub async fn remove_worktree(
+    repo_path: String,
+    worktree_path: String,
+    force: bool,
+) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir().ok_or(PvError::Config("bare repository".into()))?.to_path_buf();
+
+        let mut args = vec!["worktree".to_string(), "remove".to_string()];
+        if force {
+            args.push("--force".to_string());
+        }
+        args.push(worktree_path.clone());
+
+        let output = git_cmd()
+            .args(&args)
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if output.status.success() {
+            Ok(format!("Removed worktree: {}", worktree_path))
+        } else {
+            Err(PvError::Config(
+                String::from_utf8_lossy(&output.stderr).to_string(),
+            ))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+// ---------------------------------------------------------------------------
+// Submodule management
+// ---------------------------------------------------------------------------
+
+/// List all submodules using `git submodule status`.
+pub async fn list_submodules(repo_path: String) -> Result<Vec<SubmoduleInfo>, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        // Get submodule status
+        let status_out = git_cmd()
+            .args(["submodule", "status"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+        let status_text = String::from_utf8_lossy(&status_out.stdout).to_string();
+
+        // Get URLs from .gitmodules via config
+        let url_out = git_cmd()
+            .args([
+                "config",
+                "--file",
+                ".gitmodules",
+                "--get-regexp",
+                r"submodule\..*\.url",
+            ])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+        let url_text = String::from_utf8_lossy(&url_out.stdout).to_string();
+
+        // Build path → URL map
+        let mut url_map: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
+        for line in url_text.lines() {
+            // line: "submodule.path/to/sub.url https://github.com/..."
+            let parts: Vec<&str> = line.splitn(2, ' ').collect();
+            if parts.len() == 2 {
+                // key like "submodule.libs/foo.url" → extract path between first "." and ".url"
+                let key = parts[0]; // "submodule.libs/foo.url"
+                let url = parts[1].to_string();
+                if let Some(inner) = key.strip_prefix("submodule.") {
+                    if let Some(sub_path) = inner.strip_suffix(".url") {
+                        url_map.insert(sub_path.to_string(), url);
+                    }
+                }
+            }
+        }
+
+        // Parse status lines
+        // Format: [status_char][SHA] path (describe)
+        // status_char: ' ' = clean, '-' = not init, '+' = modified, 'U' = conflict
+        let mut result = Vec::new();
+        for line in status_text.lines() {
+            if line.is_empty() { continue; }
+            let status_char = line.chars().next().unwrap_or(' ');
+            let rest = &line[1..]; // after status char
+            // rest = "abc1234... path (describe)"
+            let parts: Vec<&str> = rest.splitn(3, ' ').collect();
+            if parts.len() < 2 { continue; }
+            let sha = parts[0].chars().take(8).collect::<String>();
+            let path = parts[1].to_string();
+            let describe = if parts.len() == 3 {
+                parts[2].trim_matches(|c| c == '(' || c == ')').to_string()
+            } else {
+                String::new()
+            };
+            let status = match status_char {
+                '-' => "not_init",
+                '+' => "modified",
+                'U' => "conflict",
+                _ => "clean",
+            };
+            let url = url_map.get(&path).cloned().unwrap_or_default();
+            result.push(SubmoduleInfo {
+                path,
+                url,
+                head: sha,
+                status: status.to_string(),
+                describe,
+            });
+        }
+
+        Ok(result)
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Update all submodules (init + recursive).
+pub async fn update_submodules(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["submodule", "update", "--init", "--recursive"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if output.status.success() {
+            let msg = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            Ok(if msg.is_empty() { "All submodules up to date.".to_string() } else { msg })
+        } else {
+            Err(PvError::Config(String::from_utf8_lossy(&output.stderr).to_string()))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Add a new submodule.
+pub async fn add_submodule(repo_path: String, url: String, path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["submodule", "add", &url, &path])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if output.status.success() {
+            Ok(format!("Submodule '{}' added successfully.", path))
+        } else {
+            Err(PvError::Config(String::from_utf8_lossy(&output.stderr).to_string()))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Remove a submodule (deinit + rm + remove cached git dir).
+pub async fn remove_submodule(repo_path: String, sub_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        // Step 1: deinit
+        let r1 = git_cmd()
+            .args(["submodule", "deinit", "-f", &sub_path])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+        if !r1.status.success() {
+            return Err(PvError::Config(
+                String::from_utf8_lossy(&r1.stderr).to_string(),
+            ));
+        }
+
+        // Step 2: git rm
+        let r2 = git_cmd()
+            .args(["rm", "-f", &sub_path])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+        if !r2.status.success() {
+            return Err(PvError::Config(
+                String::from_utf8_lossy(&r2.stderr).to_string(),
+            ));
+        }
+
+        // Step 3: remove cached .git/modules/<path>
+        let modules_path = workdir.join(".git").join("modules").join(&sub_path);
+        if modules_path.exists() {
+            std::fs::remove_dir_all(&modules_path)
+                .map_err(PvError::Io)?;
+        }
+
+        Ok(format!("Submodule '{}' removed successfully.", sub_path))
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+// ---------------------------------------------------------------------------
+// Git LFS
+// ---------------------------------------------------------------------------
+
+/// Returns true if git-lfs is installed and this repo has LFS configured.
+pub async fn detect_lfs(repo_path: String) -> Result<bool, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        // Check .gitattributes for any LFS filter lines
+        let gitattributes = workdir.join(".gitattributes");
+        if gitattributes.exists() {
+            let content = std::fs::read_to_string(&gitattributes).unwrap_or_default();
+            if content.contains("filter=lfs") {
+                return Ok(true);
+            }
+        }
+        // Also check if .git/lfs directory exists (lfs has been initialised)
+        let lfs_dir = workdir.join(".git").join("lfs");
+        Ok(lfs_dir.exists())
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Returns the list of patterns currently tracked by Git LFS (`git lfs track`).
+pub async fn list_lfs_tracks(repo_path: String) -> Result<Vec<String>, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["lfs", "track"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        let out = String::from_utf8_lossy(&output.stdout).to_string();
+        // Output format:
+        //   Listing tracked patterns
+        //       *.psd (.gitattributes)
+        //       *.png (.gitattributes)
+        let patterns: Vec<String> = out
+            .lines()
+            .filter(|l| l.trim_start().starts_with('*') || l.contains("("))
+            .filter_map(|l| {
+                let trimmed = l.trim();
+                // Strip the " (.gitattributes)" suffix
+                let pattern = trimmed.split(" (").next()?.trim().to_string();
+                if pattern.is_empty() { None } else { Some(pattern) }
+            })
+            .collect();
+        Ok(patterns)
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Track a file pattern with Git LFS (`git lfs track "<pattern>"`).
+pub async fn lfs_track(repo_path: String, pattern: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["lfs", "track", &pattern])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        } else {
+            Err(PvError::Config(String::from_utf8_lossy(&output.stderr).to_string()))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Untrack a file pattern from Git LFS (`git lfs untrack "<pattern>"`).
+pub async fn lfs_untrack(repo_path: String, pattern: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["lfs", "untrack", &pattern])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        } else {
+            Err(PvError::Config(String::from_utf8_lossy(&output.stderr).to_string()))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+// ---------------------------------------------------------------------------
+// Interactive Rebase
+// ---------------------------------------------------------------------------
+
+/// Returns commits between `base_commit..HEAD` in chronological order (oldest first),
+/// formatted as `(hash, short_hash, message)` tuples for the rebase UI.
+pub async fn get_rebase_commits(
+    repo_path: String,
+    base_commit: String,
+) -> Result<Vec<(String, String, String)>, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let range = format!("{}..HEAD", base_commit);
+        let output = git_cmd()
+            .args(["log", "--reverse", "--format=%H|%h|%s", &range])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if !output.status.success() {
+            return Err(PvError::Config(String::from_utf8_lossy(&output.stderr).to_string()));
+        }
+
+        let commits = String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(|l| {
+                let parts: Vec<&str> = l.splitn(3, '|').collect();
+                let hash = parts.first().unwrap_or(&"").to_string();
+                let short = parts.get(1).unwrap_or(&"").to_string();
+                let msg = parts.get(2).unwrap_or(&"").to_string();
+                (hash, short, msg)
+            })
+            .collect();
+        Ok(commits)
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Start an interactive rebase by injecting a pre-built todo script.
+/// Uses a temporary batch file as GIT_SEQUENCE_EDITOR to copy our todo into place.
+pub async fn start_interactive_rebase(
+    repo_path: String,
+    base_commit: String,
+    todo_content: String,
+) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        // Write our todo file to a temp location
+        let todo_path = std::env::temp_dir().join("pushvault_rebase_todo.txt");
+        std::fs::write(&todo_path, &todo_content).map_err(PvError::Io)?;
+
+        // Write a batch file that copies our todo to git's todo file
+        let bat_path = std::env::temp_dir().join("pushvault_seq_editor.bat");
+        let bat_content = format!(
+            "@echo off\r\ncopy /y \"{}\" \"%~1\" >nul 2>&1\r\n",
+            todo_path.display()
+        );
+        std::fs::write(&bat_path, bat_content).map_err(PvError::Io)?;
+
+        let editor = bat_path.to_string_lossy().to_string();
+
+        let output = git_cmd()
+            .args(["rebase", "-i", &base_commit])
+            .env("GIT_SEQUENCE_EDITOR", &editor)
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        let _ = std::fs::remove_file(&todo_path);
+        let _ = std::fs::remove_file(&bat_path);
+
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+
+        if output.status.success() || stderr.contains("nothing to do") {
+            Ok(if stdout.is_empty() { "Rebase complete.".into() } else { stdout })
+        } else {
+            Err(PvError::Config(stderr))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Continue a rebase in progress (after resolving conflicts).
+pub async fn rebase_continue(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["rebase", "--continue"])
+            .env("GIT_EDITOR", "true")
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        let text = String::from_utf8_lossy(&output.stdout).trim().to_string()
+            + " " + &String::from_utf8_lossy(&output.stderr).trim().to_string();
+        if output.status.success() { Ok(text.trim().to_string()) } else { Err(PvError::Config(text)) }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Abort rebase and return to the original branch state.
+pub async fn rebase_abort(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["rebase", "--abort"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        } else {
+            Err(PvError::Config(String::from_utf8_lossy(&output.stderr).to_string()))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Returns true if a rebase is currently in progress.
+pub async fn rebase_in_progress(repo_path: String) -> Result<bool, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let merge_dir = workdir.join(".git").join("rebase-merge");
+        let apply_dir = workdir.join(".git").join("rebase-apply");
+        Ok(merge_dir.exists() || apply_dir.exists())
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+// ---------------------------------------------------------------------------
+// Git Bisect
+// ---------------------------------------------------------------------------
+
+/// Returns current bisect state. Checks for .git/BISECT_HEAD to detect active session.
+pub async fn bisect_status(repo_path: String) -> Result<BisectInfo, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let git_dir = workdir.join(".git");
+        let bisect_head = git_dir.join("BISECT_HEAD");
+        let bisect_log = git_dir.join("BISECT_LOG");
+
+        if !bisect_head.exists() {
+            return Ok(BisectInfo {
+                active: false,
+                current_hash: String::new(),
+                current_message: String::new(),
+                log: String::new(),
+                steps_done: 0,
+                steps_remaining: 0,
+            });
+        }
+
+        // Get current HEAD info
+        let head_output = git_cmd()
+            .args(["log", "-1", "--format=%h %s"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+        let head_line = String::from_utf8_lossy(&head_output.stdout).trim().to_string();
+        let (current_hash, current_message) = head_line
+            .splitn(2, ' ')
+            .collect::<Vec<_>>()
+            .split_first()
+            .map(|(h, rest)| (h.to_string(), rest.join(" ")))
+            .unwrap_or_default();
+
+        // Read bisect log
+        let log = std::fs::read_to_string(&bisect_log).unwrap_or_default();
+        let steps_done = log.lines()
+            .filter(|l| l.starts_with("# good") || l.starts_with("# bad"))
+            .count() as u32;
+
+        // Estimate remaining steps from git bisect visualize --stat output
+        let vis_output = git_cmd()
+            .args(["bisect", "visualize", "--oneline"])
+            .current_dir(&workdir)
+            .output()
+            .ok();
+        let steps_remaining = vis_output
+            .as_ref()
+            .map(|o| String::from_utf8_lossy(&o.stdout).lines().count() as u32)
+            .unwrap_or(0);
+
+        Ok(BisectInfo {
+            active: true,
+            current_hash,
+            current_message,
+            log: log.lines()
+                .filter(|l| l.starts_with('#'))
+                .take(20)
+                .collect::<Vec<_>>()
+                .join("\n"),
+            steps_done,
+            steps_remaining,
+        })
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Start a bisect session: `git bisect start && git bisect bad <bad> && git bisect good <good>`
+pub async fn bisect_start(
+    repo_path: String,
+    bad_commit: String,
+    good_commit: String,
+) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        // bisect start
+        let out1 = git_cmd()
+            .args(["bisect", "start"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+        if !out1.status.success() {
+            return Err(PvError::Config(String::from_utf8_lossy(&out1.stderr).to_string()));
+        }
+
+        // mark bad
+        let out2 = git_cmd()
+            .args(["bisect", "bad", &bad_commit])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+        if !out2.status.success() {
+            let _ = git_cmd().args(["bisect", "reset"]).current_dir(&workdir).output();
+            return Err(PvError::Config(String::from_utf8_lossy(&out2.stderr).to_string()));
+        }
+
+        // mark good
+        let out3 = git_cmd()
+            .args(["bisect", "good", &good_commit])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+        if !out3.status.success() {
+            let _ = git_cmd().args(["bisect", "reset"]).current_dir(&workdir).output();
+            return Err(PvError::Config(String::from_utf8_lossy(&out3.stderr).to_string()));
+        }
+
+        let out = String::from_utf8_lossy(&out3.stdout).trim().to_string();
+        Ok(if out.is_empty() {
+            String::from_utf8_lossy(&out2.stdout).trim().to_string()
+        } else {
+            out
+        })
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Mark current commit as good during bisect.
+pub async fn bisect_good(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["bisect", "good"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        let text = String::from_utf8_lossy(&output.stdout).trim().to_string()
+            + &String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Ok(text)
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Mark current commit as bad during bisect.
+pub async fn bisect_bad(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["bisect", "bad"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        let text = String::from_utf8_lossy(&output.stdout).trim().to_string()
+            + &String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Ok(text)
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Skip current commit during bisect (can't test it).
+pub async fn bisect_skip(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["bisect", "skip"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        let text = String::from_utf8_lossy(&output.stdout).trim().to_string()
+            + &String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Ok(text)
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Abort bisect and return to original HEAD.
+pub async fn bisect_reset(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let workdir = repo.workdir()
+            .ok_or_else(|| PvError::Config("bare repository".into()))?
+            .to_path_buf();
+
+        let output = git_cmd()
+            .args(["bisect", "reset"])
+            .current_dir(&workdir)
+            .output()
+            .map_err(PvError::Io)?;
+
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        } else {
+            Err(PvError::Config(String::from_utf8_lossy(&output.stderr).to_string()))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
 }

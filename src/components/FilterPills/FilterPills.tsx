@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useUIStore } from "../../store/uiStore";
 import { useRepoStore } from "../../store/repoStore";
 import type { SyncState } from "../../types";
@@ -7,7 +7,6 @@ interface PillDef {
   key: string;
   label: string;
   states?: SyncState[];
-  countFn?: (counts: Record<string, number>) => number;
 }
 
 const PILLS: PillDef[] = [
@@ -26,12 +25,29 @@ export function FilterPills() {
 
   const totalRepos = config?.repos.length ?? 0;
 
+  const counts = useMemo(() => {
+    const statusValues = Object.values(statuses);
+    return {
+      needs_push: statusValues.filter(
+        (s) =>
+          s.state === "NEEDS_PUSH" ||
+          s.state === "DIVERGED"
+      ).length,
+      needs_pull: statusValues.filter(
+        (s) => s.state === "NEEDS_PULL" || s.state === "DIVERGED"
+      ).length,
+      synced: statusValues.filter((s) => s.state === "SYNCED").length,
+      conflicts: statusValues.filter((s) => s.state === "CONFLICT").length,
+      errors: statusValues.filter(
+        (s) => s.state === "ERROR" || s.state === "NOT_INIT"
+      ).length,
+    } as Record<string, number>;
+  }, [statuses]);
+
   const getCount = (pill: PillDef): number | null => {
     if (pill.key === "all") return null;
-    if (!pill.states) return null;
-    return Object.values(statuses).filter((s) =>
-      pill.states!.includes(s.state)
-    ).length;
+    const c = counts[pill.key];
+    return c !== undefined ? c : null;
   };
 
   return (
@@ -59,12 +75,12 @@ export function FilterPills() {
               padding: "5px 14px",
               borderRadius: "20px",
               border: isActive
-                ? "1px solid #1DB954"
-                : "1px solid rgba(255,255,255,0.12)",
+                ? "1px solid var(--color-accent)"
+                : "1px solid var(--color-border)",
               background: isActive
-                ? "#1DB954"
-                : "rgba(255,255,255,0.06)",
-              color: isActive ? "#000" : "#b3b3b3",
+                ? "var(--color-accent)"
+                : "var(--color-bg-elevated)",
+              color: isActive ? "#000" : "var(--color-text-secondary)",
               fontSize: "12px",
               fontWeight: isActive ? 700 : 500,
               cursor: "pointer",

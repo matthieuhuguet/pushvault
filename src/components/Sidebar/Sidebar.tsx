@@ -66,7 +66,7 @@ function NavItem({ tab, activeTab, label, icon, onClick }: NavItemProps) {
   const isActive = tab === activeTab;
   const [hovered, setHovered] = useState(false);
 
-  const iconColor = isActive ? "#ffffff" : hovered ? "#ffffff" : "#b3b3b3";
+  const iconColor = isActive ? "var(--color-text-primary)" : hovered ? "var(--color-text-primary)" : "var(--color-text-secondary)";
 
   return (
     <button
@@ -186,14 +186,14 @@ export function Sidebar({ activeTab, setActiveTab, onClone }: SidebarProps) {
       style={{
         width: "64px",
         height: "100vh",
-        background: "#000000",
+        background: "var(--color-bg-base)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         paddingTop: "8px",
         paddingBottom: "8px",
         flexShrink: 0,
-        borderRight: "1px solid rgba(255,255,255,0.06)",
+        borderRight: "1px solid var(--color-border-subtle)",
         zIndex: 10,
       }}
     >
@@ -230,7 +230,7 @@ export function Sidebar({ activeTab, setActiveTab, onClone }: SidebarProps) {
         style={{
           width: "32px",
           height: "1px",
-          background: "rgba(255,255,255,0.08)",
+          background: "var(--color-border)",
           marginBottom: "8px",
           flexShrink: 0,
         }}

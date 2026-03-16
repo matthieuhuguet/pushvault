@@ -128,7 +128,7 @@ export function CommitInput({
           bottom: "100%",
           left: 0,
           right: 0,
-          background: "#3d3d3d",
+          background: "var(--color-bg-highlight)",
           border: "1px solid #535353",
           borderRadius: "8px",
           marginBottom: "4px",
@@ -158,7 +158,7 @@ export function CommitInput({
                 fontSize: "13px",
                 minWidth: "64px",
               }}>{s.prefix}:</span>
-              <span style={{ color: "#b3b3b3", fontSize: "12px" }}>{s.description}</span>
+              <span style={{ color: "var(--color-text-secondary)", fontSize: "12px" }}>{s.description}</span>
             </div>
           ))}
         </div>
@@ -196,11 +196,11 @@ export function CommitInput({
         rows={3}
         style={{
           width: "100%",
-          background: "#3d3d3d",
+          background: "var(--color-bg-highlight)",
           border: `1px solid ${hasSecret ? "rgba(232,82,90,0.5)" : isOverLimit ? "rgba(245,166,35,0.5)" : "#535353"}`,
           borderRadius: "8px",
           padding: "10px 12px",
-          color: "#fff",
+          color: "var(--color-text-primary)",
           fontSize: "13px",
           fontFamily: "'system-ui', sans-serif",
           resize: "vertical",
@@ -230,7 +230,7 @@ export function CommitInput({
           alignItems: "center",
           gap: "6px",
           fontSize: "12px",
-          color: "#b3b3b3",
+          color: "var(--color-text-secondary)",
           cursor: "pointer",
           marginBottom: "8px",
         }}>
@@ -245,45 +245,51 @@ export function CommitInput({
       )}
 
       {/* Action buttons */}
-      <div style={{ display: "flex", gap: "8px" }}>
-        <button
-          onClick={onCommit}
-          disabled={disabled || !value.trim() || stagedCount === 0}
-          style={{
-            flex: 1,
-            background: disabled || !value.trim() || stagedCount === 0 ? "#282828" : "#1DB954",
-            border: "none",
-            borderRadius: "500px",
-            padding: "10px",
-            color: disabled || !value.trim() || stagedCount === 0 ? "#535353" : "#000",
-            fontSize: "13px",
-            fontWeight: 700,
-            cursor: disabled || !value.trim() || stagedCount === 0 ? "not-allowed" : "pointer",
-            transition: "all 0.2s",
-          }}
-        >
-          Commit
-          {stagedCount > 0 && ` (${stagedCount})`}
-        </button>
-        <button
-          onClick={onCommitAndPush}
-          disabled={disabled || !value.trim() || stagedCount === 0}
-          style={{
-            flex: 2,
-            background: "transparent",
-            border: `1px solid ${disabled || !value.trim() || stagedCount === 0 ? "#282828" : "#1DB954"}`,
-            borderRadius: "500px",
-            padding: "10px",
-            color: disabled || !value.trim() || stagedCount === 0 ? "#535353" : "#1DB954",
-            fontSize: "13px",
-            fontWeight: 700,
-            cursor: disabled || !value.trim() || stagedCount === 0 ? "not-allowed" : "pointer",
-            transition: "all 0.2s",
-          }}
-        >
-          Commit + Push
-        </button>
-      </div>
+      {(() => {
+        // Amend mode allows 0 staged files (message-only amend)
+        const canCommit = !disabled && !!value.trim() && (stagedCount > 0 || !!amend);
+        return (
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              onClick={onCommit}
+              disabled={!canCommit}
+              style={{
+                flex: 1,
+                background: canCommit ? "#1DB954" : "#282828",
+                border: "none",
+                borderRadius: "500px",
+                padding: "10px",
+                color: canCommit ? "#000" : "#535353",
+                fontSize: "13px",
+                fontWeight: 700,
+                cursor: canCommit ? "pointer" : "not-allowed",
+                transition: "all 0.2s",
+              }}
+            >
+              {amend ? "Amend" : "Commit"}
+              {stagedCount > 0 && ` (${stagedCount})`}
+            </button>
+            <button
+              onClick={onCommitAndPush}
+              disabled={!canCommit}
+              style={{
+                flex: 2,
+                background: "transparent",
+                border: `1px solid ${canCommit ? "#1DB954" : "#282828"}`,
+                borderRadius: "500px",
+                padding: "10px",
+                color: canCommit ? "#1DB954" : "#535353",
+                fontSize: "13px",
+                fontWeight: 700,
+                cursor: canCommit ? "pointer" : "not-allowed",
+                transition: "all 0.2s",
+              }}
+            >
+              {amend ? "Amend + Push" : "Commit + Push"}
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

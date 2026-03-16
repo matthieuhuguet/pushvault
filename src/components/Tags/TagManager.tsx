@@ -24,6 +24,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
   // Delete confirmation state
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPushingTags, setIsPushingTags] = useState(false);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -111,11 +112,11 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
-    background: "#282828",
-    border: "1px solid rgba(255,255,255,0.1)",
+    background: "var(--color-bg-elevated)",
+    border: "1px solid var(--color-border)",
     borderRadius: "8px",
     padding: "8px 12px",
-    color: "#fff",
+    color: "var(--color-text-primary)",
     fontSize: "13px",
     outline: "none",
     boxSizing: "border-box",
@@ -139,8 +140,8 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
       <div
         style={{
           height: "56px",
-          background: "#1a1a1a",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          background: "var(--color-bg-card)",
+          borderBottom: "1px solid var(--color-border)",
           display: "flex",
           alignItems: "center",
           padding: "0 20px",
@@ -158,9 +159,9 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
           />
           <circle cx="7" cy="7" r="1.5" fill="#1DB954" />
         </svg>
-        <h2 style={{ fontSize: "15px", fontWeight: 700, color: "#fff", flex: 1 }}>
+        <h2 style={{ fontSize: "15px", fontWeight: 700, color: "var(--color-text-primary)", flex: 1 }}>
           {repoName ?? "Repo"}
-          <span style={{ fontSize: "12px", color: "#6a6a6a", fontWeight: 400, marginLeft: "10px" }}>
+          <span style={{ fontSize: "12px", color: "var(--color-text-muted)", fontWeight: 400, marginLeft: "10px" }}>
             Tags
           </span>
         </h2>
@@ -192,6 +193,38 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
           + New Tag
         </button>
 
+        {/* Push all tags button */}
+        <button
+          disabled={isPushingTags || tags.length === 0}
+          onClick={async () => {
+            setIsPushingTags(true);
+            try {
+              await ipc.pushTags(repoPath);
+              addToast("success", "Tags pushed to remote");
+            } catch (e) {
+              addToast("error", `Push tags failed: ${e}`);
+            } finally {
+              setIsPushingTags(false);
+            }
+          }}
+          title="Push all local tags to remote"
+          style={{
+            height: "32px",
+            padding: "0 14px",
+            borderRadius: "16px",
+            background: "rgba(61,155,233,0.1)",
+            border: "1px solid rgba(61,155,233,0.3)",
+            color: tags.length === 0 ? "#535353" : "#3d9be9",
+            cursor: isPushingTags || tags.length === 0 ? "not-allowed" : "pointer",
+            fontSize: "12px",
+            fontWeight: 600,
+            opacity: tags.length === 0 ? 0.5 : 1,
+            transition: "all 150ms ease",
+          }}
+        >
+          {isPushingTags ? "Pushing…" : "↑ Push Tags"}
+        </button>
+
         {/* Close button */}
         <button
           onClick={onClose}
@@ -201,7 +234,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
             borderRadius: "50%",
             background: "rgba(255,255,255,0.08)",
             border: "none",
-            color: "#b3b3b3",
+            color: "var(--color-text-secondary)",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -232,17 +265,17 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
             <div
               style={{
                 padding: "16px 20px",
-                background: "#1e1e1e",
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                background: "var(--color-bg-card)",
+                borderBottom: "1px solid var(--color-border-subtle)",
                 animation: "fade-in 150ms ease both",
               }}
             >
-              <p style={{ fontSize: "12px", fontWeight: 700, color: "#b3b3b3", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-secondary)", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                 Create New Tag
               </p>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                 <div style={{ flex: "1 1 140px", minWidth: "140px" }}>
-                  <label style={{ fontSize: "11px", color: "#6a6a6a", display: "block", marginBottom: "4px" }}>
+                  <label style={{ fontSize: "11px", color: "var(--color-text-muted)", display: "block", marginBottom: "4px" }}>
                     Tag Name *
                   </label>
                   <input
@@ -259,7 +292,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                   />
                 </div>
                 <div style={{ flex: "1 1 140px", minWidth: "140px" }}>
-                  <label style={{ fontSize: "11px", color: "#6a6a6a", display: "block", marginBottom: "4px" }}>
+                  <label style={{ fontSize: "11px", color: "var(--color-text-muted)", display: "block", marginBottom: "4px" }}>
                     Target (default: HEAD)
                   </label>
                   <input
@@ -272,7 +305,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                   />
                 </div>
                 <div style={{ flex: "2 1 280px" }}>
-                  <label style={{ fontSize: "11px", color: "#6a6a6a", display: "block", marginBottom: "4px" }}>
+                  <label style={{ fontSize: "11px", color: "var(--color-text-muted)", display: "block", marginBottom: "4px" }}>
                     Message (annotated tag — leave empty for lightweight)
                   </label>
                   <input
@@ -294,9 +327,9 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                   style={{
                     padding: "7px 16px",
                     background: "transparent",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: "1px solid var(--color-border)",
                     borderRadius: "500px",
-                    color: "#b3b3b3",
+                    color: "var(--color-text-secondary)",
                     fontSize: "12px",
                     fontWeight: 600,
                     cursor: "pointer",
@@ -344,7 +377,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                   alignItems: "center",
                   justifyContent: "center",
                   gap: "10px",
-                  color: "#6a6a6a",
+                  color: "var(--color-text-muted)",
                   fontSize: "13px",
                 }}
               >
@@ -359,7 +392,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                 style={{
                   padding: "64px 32px",
                   textAlign: "center",
-                  color: "#535353",
+                  color: "var(--color-text-disabled)",
                 }}
               >
                 <svg
@@ -377,7 +410,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                   />
                   <circle cx="7" cy="7" r="1.5" fill="#b3b3b3" />
                 </svg>
-                <p style={{ fontSize: "15px", fontWeight: 600, color: "#fff", marginBottom: "6px" }}>
+                <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "6px" }}>
                   No tags yet
                 </p>
                 <p style={{ fontSize: "13px" }}>
@@ -396,7 +429,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                     borderBottom: "1px solid rgba(255,255,255,0.04)",
                     fontSize: "10px",
                     fontWeight: 700,
-                    color: "#535353",
+                    color: "var(--color-text-disabled)",
                     textTransform: "uppercase",
                     letterSpacing: "0.06em",
                   }}
@@ -451,7 +484,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                           {tag.name}
                         </span>
                         {tag.tagger && (
-                          <span style={{ fontSize: "11px", color: "#535353", flexShrink: 0 }}>
+                          <span style={{ fontSize: "11px", color: "var(--color-text-disabled)", flexShrink: 0 }}>
                             by {tag.tagger}
                           </span>
                         )}
@@ -460,7 +493,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                         <div
                           style={{
                             fontSize: "11px",
-                            color: "#b3b3b3",
+                            color: "var(--color-text-secondary)",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
@@ -470,7 +503,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                         </div>
                       )}
                       {tag.date && (
-                        <div style={{ fontSize: "10px", color: "#535353", marginTop: "1px" }}>
+                        <div style={{ fontSize: "10px", color: "var(--color-text-disabled)", marginTop: "1px" }}>
                           {tag.date}
                         </div>
                       )}
@@ -544,8 +577,8 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                               height: "26px",
                               borderRadius: "5px",
                               background: "rgba(255,255,255,0.06)",
-                              border: "1px solid rgba(255,255,255,0.1)",
-                              color: "#b3b3b3",
+                              border: "1px solid var(--color-border)",
+                              color: "var(--color-text-secondary)",
                               cursor: "pointer",
                               fontSize: "11px",
                               display: "flex",
@@ -566,7 +599,7 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                             borderRadius: "5px",
                             background: "transparent",
                             border: "none",
-                            color: "#535353",
+                            color: "var(--color-text-disabled)",
                             cursor: "pointer",
                             fontSize: "13px",
                             display: "flex",

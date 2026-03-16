@@ -20,8 +20,9 @@
         "minWidth": 700,
         "minHeight": 500,
         "decorations": true,
-        "transparent": false,
-        "resizable": true
+        "transparent": true,
+        "resizable": true,
+        "theme": "Dark"
       }
     ],
     "trayIcon": {

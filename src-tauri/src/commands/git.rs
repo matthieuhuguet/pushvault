@@ -4,7 +4,7 @@ use tauri::Emitter;
 use crate::{
     chunk_engine,
     git_engine,
-    models::{CommitInfo, DiffResult, FileEntry, RepoStatus, StashEntry, SyncResult},
+    models::{BisectInfo, CommitInfo, DiffResult, FileEntry, RepoStatus, StashEntry, SubmoduleInfo, SyncResult, WorktreeInfo},
     state::AppState,
 };
 
@@ -198,10 +198,18 @@ pub async fn commit_changes(
     path: String,
     message: String,
     amend: bool,
+    gpg_sign: bool,
+    gpg_key_id: String,
 ) -> Result<String, String> {
-    git_engine::commit(path, message, amend)
-        .await
-        .map_err(|e| e.to_string())
+    if gpg_sign {
+        git_engine::commit_signed(path, message, amend, gpg_key_id)
+            .await
+            .map_err(|e| e.to_string())
+    } else {
+        git_engine::commit(path, message, amend)
+            .await
+            .map_err(|e| e.to_string())
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -304,6 +312,21 @@ pub async fn delete_branch(path: String, name: String, force: bool) -> Result<()
     git_engine::delete_branch(path, name, force).await.map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn rename_branch(path: String, old_name: String, new_name: String) -> Result<(), String> {
+    git_engine::rename_branch(path, old_name, new_name).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn merge_branch(path: String, branch_name: String) -> Result<String, String> {
+    git_engine::merge_branch(path, branch_name).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn push_branch(path: String, branch_name: String) -> Result<String, String> {
+    git_engine::push_branch(path, branch_name).await.map_err(|e| e.to_string())
+}
+
 // ---------------------------------------------------------------------------
 // Conflict resolution
 // ---------------------------------------------------------------------------
@@ -336,6 +359,11 @@ pub async fn get_commit_diff(path: String, hash: String) -> Result<DiffResult, S
 #[tauri::command]
 pub async fn delete_untracked_file(path: String, file: String) -> Result<(), String> {
     git_engine::delete_untracked_file(path, file).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_stash_diff(path: String, index: usize) -> Result<DiffResult, String> {
+    git_engine::get_stash_diff(path, index).await.map_err(|e| e.to_string())
 }
 
 // ---------------------------------------------------------------------------
@@ -379,4 +407,212 @@ pub async fn cherry_pick_commit(path: String, hash: String) -> Result<String, St
 #[tauri::command]
 pub async fn get_remote_url(path: String) -> Result<String, String> {
     git_engine::get_remote_url(path).await.map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// Hunk-level staging
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn stage_hunk(path: String, patch: String) -> Result<(), String> {
+    git_engine::stage_hunk(path, patch).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn discard_hunk(path: String, patch: String) -> Result<(), String> {
+    git_engine::discard_hunk(path, patch).await.map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// Git maintenance
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn git_gc(path: String) -> Result<String, String> {
+    git_engine::git_gc(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn remote_prune(path: String, remote: String) -> Result<Vec<String>, String> {
+    git_engine::remote_prune(path, remote).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn fetch_prune(path: String) -> Result<String, String> {
+    git_engine::fetch_prune(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_head_info(path: String) -> Result<serde_json::Value, String> {
+    let (is_detached, hash, message) = git_engine::get_head_info(path)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({
+        "is_detached": is_detached,
+        "hash": hash,
+        "message": message,
+    }))
+}
+
+#[tauri::command]
+pub async fn branch_from_head(path: String, branch_name: String) -> Result<(), String> {
+    git_engine::branch_from_head(path, branch_name).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn amend_commit_message(path: String, message: String) -> Result<String, String> {
+    git_engine::amend_commit_message(path, message).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_last_commit_message(path: String) -> Result<String, String> {
+    git_engine::get_last_commit_message(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn push_tags(path: String, remote: String) -> Result<String, String> {
+    git_engine::push_tags(path, remote).await.map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// Worktree management
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn list_worktrees(path: String) -> Result<Vec<WorktreeInfo>, String> {
+    git_engine::list_worktrees(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn add_worktree(
+    path: String,
+    worktree_path: String,
+    branch: String,
+    new_branch: bool,
+) -> Result<String, String> {
+    git_engine::add_worktree(path, worktree_path, branch, new_branch)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn remove_worktree(
+    path: String,
+    worktree_path: String,
+    force: bool,
+) -> Result<String, String> {
+    git_engine::remove_worktree(path, worktree_path, force)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// Submodule management
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn list_submodules(path: String) -> Result<Vec<SubmoduleInfo>, String> {
+    git_engine::list_submodules(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_submodules(path: String) -> Result<String, String> {
+    git_engine::update_submodules(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn add_submodule(path: String, url: String, sub_path: String) -> Result<String, String> {
+    git_engine::add_submodule(path, url, sub_path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn remove_submodule(path: String, sub_path: String) -> Result<String, String> {
+    git_engine::remove_submodule(path, sub_path).await.map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// Interactive Rebase
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn get_rebase_commits(path: String, base_commit: String) -> Result<Vec<(String, String, String)>, String> {
+    git_engine::get_rebase_commits(path, base_commit).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn start_interactive_rebase(path: String, base_commit: String, todo_content: String) -> Result<String, String> {
+    git_engine::start_interactive_rebase(path, base_commit, todo_content).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn rebase_continue(path: String) -> Result<String, String> {
+    git_engine::rebase_continue(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn rebase_abort(path: String) -> Result<String, String> {
+    git_engine::rebase_abort(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn rebase_in_progress(path: String) -> Result<bool, String> {
+    git_engine::rebase_in_progress(path).await.map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// Git LFS
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn detect_lfs(path: String) -> Result<bool, String> {
+    git_engine::detect_lfs(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_lfs_tracks(path: String) -> Result<Vec<String>, String> {
+    git_engine::list_lfs_tracks(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn lfs_track(path: String, pattern: String) -> Result<String, String> {
+    git_engine::lfs_track(path, pattern).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn lfs_untrack(path: String, pattern: String) -> Result<String, String> {
+    git_engine::lfs_untrack(path, pattern).await.map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// Git Bisect
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn bisect_status(path: String) -> Result<BisectInfo, String> {
+    git_engine::bisect_status(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn bisect_start(path: String, bad_commit: String, good_commit: String) -> Result<String, String> {
+    git_engine::bisect_start(path, bad_commit, good_commit).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn bisect_good(path: String) -> Result<String, String> {
+    git_engine::bisect_good(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn bisect_bad(path: String) -> Result<String, String> {
+    git_engine::bisect_bad(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn bisect_skip(path: String) -> Result<String, String> {
+    git_engine::bisect_skip(path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn bisect_reset(path: String) -> Result<String, String> {
+    git_engine::bisect_reset(path).await.map_err(|e| e.to_string())
 }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { ipc } from "../../lib/ipc";
 import { useRepoStore } from "../../store/repoStore";
 import { useToastStore } from "../../store/toastStore";
@@ -34,8 +35,6 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
 
   const handlePickDest = async () => {
     try {
-      // Dynamically import the dialog plugin
-      const { open } = await import("@tauri-apps/plugin-dialog");
       const selected = await open({
         directory: true,
         multiple: false,
@@ -107,9 +106,9 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
         style={{
           width: "520px",
           maxWidth: "100%",
-          background: "#282828",
+          background: "var(--color-bg-elevated)",
           borderRadius: "16px",
-          border: "1px solid rgba(255,255,255,0.1)",
+          border: "1px solid var(--color-border)",
           boxShadow: "0 24px 64px rgba(0,0,0,0.8)",
           overflow: "hidden",
           animation: "slide-in-bottom 200ms ease both",
@@ -122,14 +121,14 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "20px 24px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            borderBottom: "1px solid var(--color-border-subtle)",
           }}
         >
           <div>
-            <h2 style={{ fontSize: "17px", fontWeight: 700, color: "#fff" }}>
+            <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--color-text-primary)" }}>
               Clone Repository
             </h2>
-            <p style={{ fontSize: "12px", color: "#6a6a6a", marginTop: "2px" }}>
+            <p style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "2px" }}>
               Clone from a remote URL
             </p>
           </div>
@@ -141,7 +140,7 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
               borderRadius: "50%",
               background: "rgba(255,255,255,0.08)",
               border: "none",
-              color: "#b3b3b3",
+              color: "var(--color-text-secondary)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -172,7 +171,7 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
                 display: "block",
                 fontSize: "12px",
                 fontWeight: 600,
-                color: "#b3b3b3",
+                color: "var(--color-text-secondary)",
                 marginBottom: "6px",
                 letterSpacing: "0.03em",
               }}
@@ -189,10 +188,10 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
               autoFocus
               style={{
                 width: "100%",
-                background: "#1e1e1e",
+                background: "var(--color-bg-card)",
                 border: `1px solid ${urlFocused ? "#1DB954" : "rgba(255,255,255,0.1)"}`,
                 borderRadius: "8px",
-                color: "#fff",
+                color: "var(--color-text-primary)",
                 fontSize: "13px",
                 padding: "10px 14px",
                 outline: "none",
@@ -209,7 +208,7 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
                 display: "block",
                 fontSize: "12px",
                 fontWeight: 600,
-                color: "#b3b3b3",
+                color: "var(--color-text-secondary)",
                 marginBottom: "6px",
                 letterSpacing: "0.03em",
               }}
@@ -226,10 +225,10 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
                 onBlur={() => setDestFocused(false)}
                 style={{
                   flex: 1,
-                  background: "#1e1e1e",
+                  background: "var(--color-bg-card)",
                   border: `1px solid ${destFocused ? "#1DB954" : "rgba(255,255,255,0.1)"}`,
                   borderRadius: "8px",
-                  color: "#fff",
+                  color: "var(--color-text-primary)",
                   fontSize: "13px",
                   padding: "10px 14px",
                   outline: "none",
@@ -243,9 +242,9 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
                 style={{
                   padding: "0 16px",
                   background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,255,255,0.1)",
+                  border: "1px solid var(--color-border)",
                   borderRadius: "8px",
-                  color: "#b3b3b3",
+                  color: "var(--color-text-secondary)",
                   fontSize: "12px",
                   fontWeight: 600,
                   cursor: "pointer",
@@ -284,9 +283,9 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="#1DB954" strokeWidth="1.8" strokeLinejoin="round" />
               </svg>
-              <span style={{ fontSize: "12px", color: "#b3b3b3" }}>
+              <span style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
                 Will clone as:{" "}
-                <span style={{ color: "#fff", fontWeight: 600 }}>
+                <span style={{ color: "var(--color-text-primary)", fontWeight: 600 }}>
                   {repoName}
                 </span>
               </span>
@@ -324,9 +323,9 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
               style={{
                 padding: "10px 20px",
                 background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
+                border: "1px solid var(--color-border)",
                 borderRadius: "20px",
-                color: "#b3b3b3",
+                color: "var(--color-text-secondary)",
                 fontSize: "13px",
                 fontWeight: 600,
                 cursor: cloning ? "not-allowed" : "pointer",

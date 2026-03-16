@@ -79,7 +79,7 @@ export function GitHubPanel() {
           style={{
             margin: "0 0 24px",
             fontSize: "14px",
-            color: "#b3b3b3",
+            color: "var(--color-text-secondary)",
             lineHeight: 1.6,
           }}
         >
@@ -99,11 +99,11 @@ export function GitHubPanel() {
             placeholder="ghp_xxxxxxxxxxxx"
             style={{
               flex: 1,
-              background: "#282828",
+              background: "var(--color-bg-elevated)",
               border: "1px solid #535353",
               borderRadius: "8px",
               padding: "10px 14px",
-              color: "#fff",
+              color: "var(--color-text-primary)",
               fontSize: "14px",
               outline: "none",
               fontFamily: "monospace",
@@ -139,7 +139,7 @@ export function GitHubPanel() {
             display: "flex",
             alignItems: "center",
             gap: "16px",
-            background: "#282828",
+            background: "var(--color-bg-elevated)",
             borderRadius: "12px",
             padding: "16px",
             marginBottom: "24px",
@@ -159,10 +159,10 @@ export function GitHubPanel() {
             <p style={{ margin: 0, fontSize: "16px", fontWeight: 700 }}>
               {user.name || user.login}
             </p>
-            <p style={{ margin: "2px 0 0", fontSize: "13px", color: "#b3b3b3" }}>
+            <p style={{ margin: "2px 0 0", fontSize: "13px", color: "var(--color-text-secondary)" }}>
               @{user.login}
             </p>
-            <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#535353" }}>
+            <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--color-text-disabled)" }}>
               {user.public_repos} public · {user.private_repos} private repos
             </p>
           </div>
@@ -176,7 +176,7 @@ export function GitHubPanel() {
               border: "1px solid #535353",
               borderRadius: "6px",
               padding: "6px 12px",
-              color: "#b3b3b3",
+              color: "var(--color-text-secondary)",
               fontSize: "13px",
               cursor: "pointer",
             }}
@@ -217,11 +217,11 @@ export function GitHubPanel() {
           placeholder="Search repositories..."
           style={{
             flex: 1,
-            background: "#282828",
+            background: "var(--color-bg-elevated)",
             border: "1px solid #535353",
             borderRadius: "8px",
             padding: "8px 12px",
-            color: "#fff",
+            color: "var(--color-text-primary)",
             fontSize: "13px",
             outline: "none",
             marginRight: "12px",
@@ -232,11 +232,11 @@ export function GitHubPanel() {
             fetchRepos();
           }}
           style={{
-            background: "#282828",
+            background: "var(--color-bg-elevated)",
             border: "1px solid #535353",
             borderRadius: "8px",
             padding: "8px 14px",
-            color: "#b3b3b3",
+            color: "var(--color-text-secondary)",
             fontSize: "13px",
             cursor: "pointer",
             flexShrink: 0,
@@ -258,7 +258,7 @@ export function GitHubPanel() {
         {loading ? (
           <p
             style={{
-              color: "#535353",
+              color: "var(--color-text-disabled)",
               textAlign: "center",
               padding: "32px",
             }}
@@ -268,7 +268,7 @@ export function GitHubPanel() {
         ) : filtered.length === 0 ? (
           <p
             style={{
-              color: "#535353",
+              color: "var(--color-text-disabled)",
               textAlign: "center",
               padding: "32px",
             }}
@@ -282,7 +282,7 @@ export function GitHubPanel() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                background: "#1e1e1e",
+                background: "var(--color-bg-card)",
                 borderRadius: "8px",
                 padding: "12px 14px",
                 gap: "12px",
@@ -301,7 +301,7 @@ export function GitHubPanel() {
                     style={{
                       fontSize: "14px",
                       fontWeight: 600,
-                      color: "#fff",
+                      color: "var(--color-text-primary)",
                     }}
                   >
                     {repo.name}
@@ -321,7 +321,7 @@ export function GitHubPanel() {
                     </span>
                   )}
                   {repo.stargazers_count > 0 && (
-                    <span style={{ fontSize: "12px", color: "#535353" }}>
+                    <span style={{ fontSize: "12px", color: "var(--color-text-disabled)" }}>
                       ⭐ {repo.stargazers_count}
                     </span>
                   )}
@@ -331,7 +331,7 @@ export function GitHubPanel() {
                     style={{
                       margin: "3px 0 0",
                       fontSize: "12px",
-                      color: "#b3b3b3",
+                      color: "var(--color-text-secondary)",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",

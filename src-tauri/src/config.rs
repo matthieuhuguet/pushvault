@@ -1,7 +1,27 @@
 use std::path::{Path, PathBuf};
 use crate::{error::PvError, models::{AppConfig, RepoConfig}};
 
+/// Returns true when a `pushvault.portable` marker file sits next to the exe.
+/// In portable mode the config is stored alongside the executable instead of
+/// in the OS application-data directory.
+pub fn is_portable() -> bool {
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            return dir.join("pushvault.portable").exists();
+        }
+    }
+    false
+}
+
 fn config_path() -> PathBuf {
+    if is_portable() {
+        // Portable: config.json lives next to the exe
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                return dir.join("config.json");
+            }
+        }
+    }
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("pushvault")
@@ -46,6 +66,9 @@ fn migrate_legacy_config(legacy_path: &Path) -> Option<AppConfig> {
         batch_size: v["batch_size"].as_u64().unwrap_or(50) as usize,
         window_width,
         window_height,
+        gpg_sign_commits: v["gpg_sign_commits"].as_bool().unwrap_or(false),
+        gpg_key_id: v["gpg_key_id"].as_str().unwrap_or("").to_string(),
+        github_token: v["github_token"].as_str().unwrap_or("").to_string(),
     })
 }
 

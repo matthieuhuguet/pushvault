@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ipc } from "../../lib/ipc";
 import type { ConflictFile } from "../../types";
 import { useToastStore } from "../../store/toastStore";
+import { useConfirmStore } from "../../store/confirmStore";
 
 interface Props {
   repoPath: string;
@@ -66,7 +67,13 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
   };
 
   const handleAbortMerge = async () => {
-    if (!confirm("Abort the merge? All conflict resolutions will be lost.")) return;
+    const ok = await useConfirmStore.getState().request({
+      title: "Abort merge?",
+      description: "Abort the merge? All conflict resolutions will be lost.",
+      danger: true,
+      confirmLabel: "Abort Merge",
+    });
+    if (!ok) return;
     try {
       await ipc.abortMerge(repoPath);
       addToast("info", "Merge aborted");
@@ -88,7 +95,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
       paddingTop: "60px",
     }}>
       <div style={{
-        background: "#282828",
+        background: "var(--color-bg-elevated)",
         borderRadius: "12px",
         width: "860px",
         maxWidth: "95vw",
@@ -128,7 +135,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
               )}
             </div>
             {repoName && (
-              <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#b3b3b3" }}>
+              <p style={{ margin: "4px 0 0", fontSize: "13px", color: "var(--color-text-secondary)" }}>
                 {repoName}
               </p>
             )}
@@ -173,7 +180,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
             <button
               onClick={onClose}
               style={{
-                background: "none", border: "none", color: "#b3b3b3",
+                background: "none", border: "none", color: "var(--color-text-secondary)",
                 cursor: "pointer", fontSize: "20px", lineHeight: 1, padding: "4px",
                 borderRadius: "4px",
               }}
@@ -188,7 +195,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#535353",
+            color: "var(--color-text-disabled)",
             fontSize: "14px",
           }}>
             Loading conflicts...
@@ -201,13 +208,13 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
             alignItems: "center",
             justifyContent: "center",
             gap: "12px",
-            color: "#b3b3b3",
+            color: "var(--color-text-secondary)",
           }}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.4 }}>
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="#1DB954" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               <polyline points="22 4 12 14.01 9 11.01" stroke="#1DB954" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <p style={{ fontSize: "15px", fontWeight: 600, color: "#fff", margin: 0 }}>
+            <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text-primary)", margin: 0 }}>
               No conflicts detected
             </p>
             <p style={{ fontSize: "13px", margin: 0 }}>
@@ -227,7 +234,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
               <p style={{
                 fontSize: "11px",
                 fontWeight: 700,
-                color: "#b3b3b3",
+                color: "var(--color-text-secondary)",
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
                 margin: "0 16px 8px",
@@ -273,7 +280,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                       <p style={{
                         margin: "2px 0 0",
                         fontSize: "10px",
-                        color: "#535353",
+                        color: "var(--color-text-disabled)",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -300,10 +307,10 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                     gap: "12px",
                   }}>
                     <div>
-                      <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#fff" }}>
+                      <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
                         {selectedFile.path}
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#535353" }}>
+                      <p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-text-disabled)" }}>
                         Conflict type: {selectedFile.conflict_type}
                       </p>
                     </div>
@@ -437,7 +444,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#535353",
+                  color: "var(--color-text-disabled)",
                   fontSize: "13px",
                 }}>
                   Select a file to view conflict details

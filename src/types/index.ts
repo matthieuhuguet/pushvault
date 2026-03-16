@@ -81,6 +81,9 @@ export interface AppConfig {
   batch_size: number;
   window_width: number;
   window_height: number;
+  gpg_sign_commits: boolean;
+  gpg_key_id: string;
+  github_token: string;
 }
 
 export type ToastLevel = "success" | "error" | "warning" | "info";
@@ -118,4 +121,21 @@ export interface TagInfo {
   tagger: string | null;
   date: string | null;
   is_annotated: boolean;
+}
+
+export interface WorktreeInfo {
+  path: string;
+  head: string;
+  branch: string;
+  is_main: boolean;
+  is_locked: boolean;
+  is_prunable: boolean;
+}
+
+export interface SubmoduleInfo {
+  path: string;
+  url: string;
+  head: string;
+  status: "clean" | "not_init" | "modified" | "conflict";
+  describe: string;
 }

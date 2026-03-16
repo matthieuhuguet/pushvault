@@ -1,16 +1,34 @@
 import React, { useEffect, useRef } from "react";
 
-const SHORTCUTS = [
-  { key: "Ctrl+S", description: "Sync all repositories" },
-  { key: "Ctrl+R", description: "Refresh all statuses" },
-  { key: "Ctrl+K", description: "Focus search bar" },
-  { key: "Ctrl+,", description: "Open settings" },
-  { key: "Ctrl+N", description: "Clone from URL" },
-  { key: "Ctrl+Enter", description: "Commit (in staging)" },
-  { key: "Ctrl+Shift+Enter", description: "Commit + Push" },
-  { key: "Ctrl+/", description: "Show keyboard shortcuts" },
-  { key: "Escape", description: "Close panel / minimize to tray" },
-  { key: "F5", description: "Refresh current view" },
+interface Shortcut {
+  key: string;
+  description: string;
+  category?: string;
+}
+
+const SHORTCUTS: Shortcut[] = [
+  // Global
+  { key: "Ctrl+S", description: "Sync all repositories", category: "Global" },
+  { key: "Ctrl+R / F5", description: "Refresh all statuses", category: "Global" },
+  { key: "Ctrl+K", description: "Focus repo search bar", category: "Global" },
+  { key: "Ctrl+,", description: "Open settings", category: "Global" },
+  { key: "Ctrl+N", description: "Clone from URL", category: "Global" },
+  { key: "Ctrl+P", description: "Open command palette", category: "Global" },
+  { key: "Ctrl+/", description: "Show keyboard shortcuts", category: "Global" },
+  { key: "Escape", description: "Close panel / modal", category: "Global" },
+  // Staging area
+  { key: "Ctrl+A", description: "Stage all modified files", category: "Staging" },
+  { key: "Ctrl+Shift+U", description: "Unstage all files", category: "Staging" },
+  { key: "Ctrl+Enter", description: "Commit staged changes", category: "Staging" },
+  { key: "Delete", description: "Discard / delete selected file", category: "Staging" },
+  // Diff viewer
+  { key: "Ctrl+F", description: "Search in diff viewer", category: "Diff" },
+  // Commit history
+  { key: "↑ / ↓", description: "Navigate commit list", category: "History" },
+  { key: "Enter", description: "Expand selected commit diff", category: "History" },
+  // Navigation
+  { key: "Right-click", description: "Context menu (push, pull, release, worktrees…)", category: "Navigation" },
+  { key: "Drag cards", description: "Reorder repository cards", category: "Navigation" },
 ];
 
 interface KeyboardHelpProps {
@@ -57,9 +75,9 @@ export function KeyboardHelp({ onClose }: KeyboardHelpProps) {
         style={{
           width: "520px",
           maxWidth: "100%",
-          background: "#1e1e1e",
+          background: "var(--color-bg-card)",
           borderRadius: "16px",
-          border: "1px solid rgba(255,255,255,0.1)",
+          border: "1px solid var(--color-border)",
           boxShadow: "0 24px 64px rgba(0,0,0,0.8)",
           overflow: "hidden",
           animation: "slide-in-bottom 200ms ease both",
@@ -72,14 +90,14 @@ export function KeyboardHelp({ onClose }: KeyboardHelpProps) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "20px 24px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            borderBottom: "1px solid var(--color-border-subtle)",
           }}
         >
           <div>
-            <h2 style={{ fontSize: "17px", fontWeight: 700, color: "#fff", margin: 0 }}>
+            <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>
               Keyboard Shortcuts
             </h2>
-            <p style={{ fontSize: "12px", color: "#6a6a6a", marginTop: "2px", marginBottom: 0 }}>
+            <p style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "2px", marginBottom: 0 }}>
               Press Ctrl+/ to toggle this panel
             </p>
           </div>
@@ -91,7 +109,7 @@ export function KeyboardHelp({ onClose }: KeyboardHelpProps) {
               borderRadius: "50%",
               background: "rgba(255,255,255,0.08)",
               border: "none",
-              color: "#b3b3b3",
+              color: "var(--color-text-secondary)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -113,70 +131,63 @@ export function KeyboardHelp({ onClose }: KeyboardHelpProps) {
           </button>
         </div>
 
-        {/* Shortcuts grid */}
-        <div style={{ padding: "20px 24px" }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "8px",
-            }}
-          >
-            {SHORTCUTS.map((shortcut) => (
-              <div
-                key={shortcut.key}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "12px",
-                  padding: "10px 12px",
-                  background: "rgba(255,255,255,0.03)",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(255,255,255,0.04)",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "12px",
-                    color: "#b3b3b3",
-                    flex: 1,
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {shortcut.description}
-                </span>
-                <kbd
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    padding: "3px 7px",
-                    background: "#282828",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    borderBottom: "2px solid rgba(255,255,255,0.1)",
-                    borderRadius: "5px",
-                    fontSize: "11px",
-                    fontFamily: "monospace",
-                    color: "#e0e0e0",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                  }}
-                >
-                  {shortcut.key}
-                </kbd>
+        {/* Shortcuts grouped by category */}
+        <div style={{ padding: "16px 24px 20px", maxHeight: "70vh", overflowY: "auto" }}>
+          {Array.from(new Set(SHORTCUTS.map((s) => s.category ?? "Other"))).map((cat) => (
+            <div key={cat} style={{ marginBottom: "16px" }}>
+              <p style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                color: "var(--color-text-disabled)",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                margin: "0 0 8px",
+              }}>
+                {cat}
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                {SHORTCUTS.filter((s) => (s.category ?? "Other") === cat).map((shortcut) => (
+                  <div
+                    key={shortcut.key}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                      padding: "9px 12px",
+                      background: "rgba(255,255,255,0.03)",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    <span style={{ fontSize: "12px", color: "var(--color-text-secondary)", flex: 1, lineHeight: 1.3 }}>
+                      {shortcut.description}
+                    </span>
+                    <kbd
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        padding: "3px 7px",
+                        background: "var(--color-bg-elevated)",
+                        border: "1px solid rgba(255,255,255,0.15)",
+                        borderBottom: "2px solid rgba(255,255,255,0.1)",
+                        borderRadius: "5px",
+                        fontSize: "11px",
+                        fontFamily: "monospace",
+                        color: "#e0e0e0",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {shortcut.key}
+                    </kbd>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
 
-          <p
-            style={{
-              marginTop: "16px",
-              marginBottom: 0,
-              fontSize: "11px",
-              color: "#535353",
-              textAlign: "center",
-            }}
-          >
+          <p style={{ marginTop: "8px", marginBottom: 0, fontSize: "11px", color: "var(--color-text-disabled)", textAlign: "center" }}>
             Press Escape or click outside to close
           </p>
         </div>

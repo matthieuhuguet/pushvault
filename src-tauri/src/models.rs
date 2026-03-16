@@ -94,6 +94,12 @@ pub struct AppConfig {
     pub batch_size: usize,
     pub window_width: u32,
     pub window_height: u32,
+    #[serde(default)]
+    pub gpg_sign_commits: bool,
+    #[serde(default)]
+    pub gpg_key_id: String,
+    #[serde(default)]
+    pub github_token: String,
 }
 
 impl Default for AppConfig {
@@ -105,6 +111,9 @@ impl Default for AppConfig {
             batch_size: 50,
             window_width: 1200,
             window_height: 750,
+            gpg_sign_commits: false,
+            gpg_key_id: String::new(),
+            github_token: String::new(),
         }
     }
 }
@@ -136,4 +145,33 @@ pub struct TagInfo {
     pub tagger: Option<String>,
     pub date: Option<String>,
     pub is_annotated: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WorktreeInfo {
+    pub path: String,
+    pub head: String,       // short SHA (8 chars)
+    pub branch: String,     // branch name or "(detached HEAD)"
+    pub is_main: bool,
+    pub is_locked: bool,
+    pub is_prunable: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SubmoduleInfo {
+    pub path: String,
+    pub url: String,
+    pub head: String,       // short SHA (8 chars)
+    pub status: String,     // "clean" | "not_init" | "modified" | "conflict"
+    pub describe: String,   // optional tag/description from git describe
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BisectInfo {
+    pub active: bool,
+    pub current_hash: String,    // current HEAD short SHA
+    pub current_message: String, // current HEAD commit message
+    pub log: String,             // contents of BISECT_LOG (trimmed)
+    pub steps_done: u32,         // lines in BISECT_LOG that are good/bad marks
+    pub steps_remaining: u32,    // estimated from log (2^n search, rough estimate)
 }

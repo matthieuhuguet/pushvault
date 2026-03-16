@@ -3,7 +3,14 @@ import type { RepoConfig, RepoStatus, SyncState } from "../../types";
 import { useUIStore } from "../../store/uiStore";
 import { useRepoStore } from "../../store/repoStore";
 import { useToastStore } from "../../store/toastStore";
+import { useGitHubStore } from "../../store/githubStore";
+import { useActivityStore } from "../../store/activityStore";
+import { useConfirmStore } from "../../store/confirmStore";
 import { ipc } from "../../lib/ipc";
+import { WorkflowRunsModal } from "../GitHub/WorkflowRunsModal";
+import { GitHubPRsModal } from "../GitHub/GitHubPRsModal";
+import { GitHubIssuesModal } from "../GitHub/GitHubIssuesModal";
+import { GitHubReleaseModal } from "../GitHub/GitHubReleaseModal";
 
 /* ── Icon map ───────────────────────────────────────────────── */
 function RepoIcon({ name, size = 28 }: { name: string; size?: number }) {
@@ -136,15 +143,22 @@ interface ContextMenuProps {
   x: number;
   y: number;
   repoPath: string;
+  repoName: string;
   conflictsCount: number;
+  remoteUrl?: string | null;
   onClose: () => void;
+  onShowPRs?: () => void;
+  onShowWorkflowRuns?: () => void;
+  onShowIssues?: () => void;
+  onShowRelease?: () => void;
 }
 
-function ContextMenu({ x, y, repoPath, conflictsCount, onClose }: ContextMenuProps) {
+export function RepoContextMenu({ x, y, repoPath, repoName, conflictsCount, remoteUrl, onClose, onShowPRs, onShowWorkflowRuns, onShowIssues, onShowRelease }: ContextMenuProps) {
   const { setSelectedRepoPath, setActivePanel } = useUIStore();
   const removeRepo = useRepoStore((s) => s.removeRepo);
   const refreshStatus = useRepoStore((s) => s.refreshStatus);
   const addToast = useToastStore((s) => s.add);
+  const logActivity = useActivityStore((s) => s.addEntry);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -166,7 +180,7 @@ function ContextMenu({ x, y, repoPath, conflictsCount, onClose }: ContextMenuPro
     };
   }, [onClose]);
 
-  const openPanel = (panel: "staging" | "history" | "stash" | "branches" | "conflicts" | "tags" | "gitignore") => {
+  const openPanel = (panel: "staging" | "history" | "stash" | "branches" | "conflicts" | "tags" | "gitignore" | "worktrees" | "submodules" | "lfs" | "bisect" | "rebase") => {
     setSelectedRepoPath(repoPath);
     setActivePanel(panel);
     onClose();
@@ -199,14 +213,36 @@ function ContextMenu({ x, y, repoPath, conflictsCount, onClose }: ContextMenuPro
     }
   };
 
+  const handleSync = async () => {
+    onClose();
+    try {
+      addToast("info", "Syncing…");
+      const result = await ipc.syncRepoWithProgress(repoPath, "");
+      if (result.success) {
+        const actions = [result.pulled && "pulled", result.pushed && "pushed"].filter(Boolean).join(" + ");
+        addToast("success", `Synced${actions ? ` (${actions})` : ""}`);
+        logActivity({ repoName, operation: "Sync", success: true, message: actions ? `Pulled + pushed` : "Already in sync", isDestructive: false });
+      } else {
+        addToast("warning", result.message || "Sync had issues");
+        logActivity({ repoName, operation: "Sync", success: false, message: result.message || "Sync had issues", isDestructive: false });
+      }
+      refreshStatus(repoPath);
+    } catch (e) {
+      addToast("error", `Sync failed: ${e}`);
+      logActivity({ repoName, operation: "Sync", success: false, message: String(e), isDestructive: false });
+    }
+  };
+
   const handlePush = async () => {
     onClose();
     try {
       await ipc.pushRepo(repoPath, "");
       addToast("success", "Pushed successfully");
+      logActivity({ repoName, operation: "Push", success: true, message: "Pushed to remote", isDestructive: false });
       refreshStatus(repoPath);
     } catch (e) {
       addToast("error", `Push failed: ${e}`);
+      logActivity({ repoName, operation: "Push", success: false, message: String(e), isDestructive: false });
     }
   };
 
@@ -215,9 +251,11 @@ function ContextMenu({ x, y, repoPath, conflictsCount, onClose }: ContextMenuPro
     try {
       await ipc.pullRepo(repoPath);
       addToast("success", "Pulled successfully");
+      logActivity({ repoName, operation: "Pull", success: true, message: "Pulled from remote", isDestructive: false });
       refreshStatus(repoPath);
     } catch (e) {
       addToast("error", `Pull failed: ${e}`);
+      logActivity({ repoName, operation: "Pull", success: false, message: String(e), isDestructive: false });
     }
   };
 
@@ -226,23 +264,90 @@ function ContextMenu({ x, y, repoPath, conflictsCount, onClose }: ContextMenuPro
     try {
       await ipc.fetchRepo(repoPath);
       addToast("info", "Fetched remote");
+      logActivity({ repoName, operation: "Fetch", success: true, message: "Fetched remote refs", isDestructive: false });
       refreshStatus(repoPath);
     } catch (e) {
       addToast("error", `Fetch failed: ${e}`);
+      logActivity({ repoName, operation: "Fetch", success: false, message: String(e), isDestructive: false });
     }
   };
 
   const handleRemove = async () => {
     onClose();
-    if (confirm(`Remove "${repoPath}" from PushVault?\n\nThis will not delete any files.`)) {
+    const ok = await useConfirmStore.getState().request({
+      title: "Remove repository?",
+      description: `Remove "${repoPath}" from PushVault?\n\nThis will not delete any files.`,
+      danger: true,
+      confirmLabel: "Remove",
+    });
+    if (ok) {
       await removeRepo(repoPath);
       addToast("info", "Repo removed from PushVault");
     }
   };
 
+  const handleGitGc = async () => {
+    onClose();
+    try {
+      addToast("info", "Running Git GC…");
+      const result = await ipc.gitGc(repoPath);
+      addToast("success", `GC done: ${result || "clean"}`);
+    } catch (e) {
+      addToast("error", `Git GC failed: ${e}`);
+    }
+  };
+
+  const handleFetchPrune = async () => {
+    onClose();
+    try {
+      addToast("info", "Fetching & pruning…");
+      const result = await ipc.fetchPrune(repoPath);
+      addToast("success", result || "Fetch & prune done");
+      refreshStatus(repoPath);
+    } catch (e) {
+      addToast("error", `Fetch & prune failed: ${e}`);
+    }
+  };
+
+  const handleRemotePrune = async () => {
+    onClose();
+    try {
+      const pruned = await ipc.remotePrune(repoPath, "origin");
+      if (pruned.length === 0) {
+        addToast("info", "No stale remote-tracking branches found");
+      } else {
+        addToast("success", `Pruned: ${pruned.join(", ")}`);
+        refreshStatus(repoPath);
+      }
+    } catch (e) {
+      addToast("error", `Remote prune failed: ${e}`);
+    }
+  };
+
+  const handleCopyRemoteUrl = () => {
+    if (!remoteUrl) return;
+    navigator.clipboard.writeText(remoteUrl).catch(() => {});
+    onClose();
+    addToast("info", `Copied: ${remoteUrl}`);
+  };
+
+  const handleOpenRemoteUrl = () => {
+    if (!remoteUrl) return;
+    // Convert SSH URL to HTTPS for browser navigation
+    let webUrl = remoteUrl.replace(/\.git$/, "");
+    if (webUrl.startsWith("git@github.com:")) {
+      webUrl = "https://github.com/" + webUrl.slice("git@github.com:".length);
+    } else if (webUrl.startsWith("git@")) {
+      // other SSH: git@host:user/repo → https://host/user/repo
+      webUrl = webUrl.replace(/^git@([^:]+):/, "https://$1/");
+    }
+    window.open(webUrl, "_blank", "noopener noreferrer");
+    onClose();
+  };
+
   // Adjust position to stay within viewport
   const menuWidth = 220;
-  const menuHeight = 380;
+  const menuHeight = remoteUrl ? 748 : 568;
   const adjustedX = Math.min(x, window.innerWidth - menuWidth - 8);
   const adjustedY = Math.min(y, window.innerHeight - menuHeight - 8);
 
@@ -294,8 +399,8 @@ function ContextMenu({ x, y, repoPath, conflictsCount, onClose }: ContextMenuPro
         position: "fixed",
         top: adjustedY,
         left: adjustedX,
-        background: "#282828",
-        border: "1px solid rgba(255,255,255,0.1)",
+        background: "var(--color-bg-elevated)",
+        border: "1px solid var(--color-border)",
         borderRadius: "10px",
         padding: "4px 0",
         boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
@@ -304,6 +409,7 @@ function ContextMenu({ x, y, repoPath, conflictsCount, onClose }: ContextMenuPro
         animation: "fade-in 100ms ease both",
       }}
     >
+      {item("Sync (Pull + Push)", "⇅", handleSync)}
       {item("Push", "↑", handlePush)}
       {item("Pull", "↓", handlePull)}
       {item("Fetch", "⟳", handleFetch)}
@@ -312,6 +418,11 @@ function ContextMenu({ x, y, repoPath, conflictsCount, onClose }: ContextMenuPro
       {item("History", "◷", () => openPanel("history"))}
       {item("Stash", "📦", () => openPanel("stash"))}
       {item("Manage Branches", "⎇", () => openPanel("branches"))}
+      {item("Worktrees", "⊞", () => openPanel("worktrees"))}
+      {item("Submodules", "⊂", () => openPanel("submodules"))}
+      {item("Git LFS", "📦", () => openPanel("lfs"))}
+      {item("Bisect", "🔍", () => openPanel("bisect"))}
+      {item("Rebase", "↕", () => openPanel("rebase"))}
       {item("Manage Tags", "🏷", () => openPanel("tags"))}
       {item("Edit .gitignore", "⊘", () => openPanel("gitignore"))}
       {conflictsCount > 0 && item("Resolve Conflicts", "⚡", () => openPanel("conflicts"))}
@@ -320,8 +431,77 @@ function ContextMenu({ x, y, repoPath, conflictsCount, onClose }: ContextMenuPro
       {item("Open in VS Code", "⎈", handleOpenVscode)}
       {item("Open in Terminal", ">_", handleOpenTerminal)}
       <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
+      {item("Git GC / Clean up", "🔧", handleGitGc)}
+      {item("Fetch & Prune", "🌿", handleFetchPrune)}
+      {item("Remote Prune", "✂", handleRemotePrune)}
+      {remoteUrl && (
+        <>
+          <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
+          {item("Open on GitHub", "⎋", handleOpenRemoteUrl)}
+          {item("Copy Remote URL", "⎘", handleCopyRemoteUrl)}
+          {onShowPRs && item("Pull Requests", "⇌", () => { onClose(); onShowPRs(); })}
+          {onShowIssues && item("Issues", "◎", () => { onClose(); onShowIssues(); })}
+          {onShowWorkflowRuns && item("GitHub Actions", "⏱", () => { onClose(); onShowWorkflowRuns(); })}
+          {onShowRelease && item("Create Release", "🚀", () => { onClose(); onShowRelease(); })}
+        </>
+      )}
+      <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
       {item("Remove", "✕", handleRemove, true)}
     </div>
+  );
+}
+
+/* ── CI badge ───────────────────────────────────────────────── */
+interface CiBadgeProps {
+  status: "success" | "failure" | "in_progress";
+  onClick?: () => void;
+}
+
+function CiBadge({ status, onClick }: CiBadgeProps) {
+  const colorMap = {
+    success: "#1DB954",
+    failure: "#e5534b",
+    in_progress: "#f59b00",
+  };
+  const labelMap = {
+    success: "CI passed — click for details",
+    failure: "CI failed — click for details",
+    in_progress: "CI running — click for details",
+  };
+  const color = colorMap[status];
+
+  return (
+    <span
+      title={labelMap[status]}
+      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "3px",
+        flexShrink: 0,
+        cursor: onClick ? "pointer" : "default",
+        padding: "1px 5px",
+        borderRadius: "8px",
+        background: `${color}18`,
+        border: `1px solid ${color}44`,
+        transition: "all 120ms ease",
+      }}
+    >
+      <span
+        style={{
+          width: "6px",
+          height: "6px",
+          borderRadius: "50%",
+          background: color,
+          boxShadow: `0 0 4px ${color}bb`,
+          animation: status === "in_progress" ? "pulse 1.4s ease-in-out infinite" : undefined,
+          display: "inline-block",
+        }}
+      />
+      <span style={{ fontSize: "9px", fontWeight: 700, color }}>
+        {status === "success" ? "CI" : status === "failure" ? "✕" : "⟳"}
+      </span>
+    </span>
   );
 }
 
@@ -330,7 +510,7 @@ export function RepoCardSkeleton() {
   return (
     <div
       style={{
-        background: "#181818",
+        background: "var(--color-bg-card)",
         borderRadius: "12px",
         overflow: "hidden",
         minWidth: "200px",
@@ -361,6 +541,31 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [remoteUrl, setRemoteUrl] = useState<string | null>(null);
+  const [showWorkflowRuns, setShowWorkflowRuns] = useState(false);
+  const [showPRs, setShowPRs] = useState(false);
+  const [showIssues, setShowIssues] = useState(false);
+  const [showRelease, setShowRelease] = useState(false);
+
+  const ciStatuses = useGitHubStore((s) => s.ciStatuses);
+  const fetchCiStatus = useGitHubStore((s) => s.fetchCiStatus);
+
+  // Lazily load remote URL once per session, then fetch CI status
+  useEffect(() => {
+    let cancelled = false;
+    ipc.getRemoteUrl(repo.path).then((url) => {
+      if (cancelled || !url) return;
+      setRemoteUrl(url);
+      if (!(url in ciStatuses)) {
+        fetchCiStatus(url);
+      }
+    }).catch(() => {/* no remote — ignore */});
+    return () => { cancelled = true; };
+  // Only run on mount (repo.path is stable per card instance)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repo.path]);
+
+  const ciStatus = remoteUrl ? ciStatuses[remoteUrl] : undefined;
 
   const state: SyncState = status?.state ?? "CHECKING";
   const dotColor = getStateDot(state);
@@ -401,7 +606,7 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
         onMouseDown={() => setPressed(true)}
         onMouseUp={() => setPressed(false)}
         style={{
-          background: "#181818",
+          background: "var(--color-bg-card)",
           borderRadius: "12px",
           overflow: "hidden",
           border: `1px solid ${getBorderColor()}`,
@@ -494,6 +699,13 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
 
           {/* State dot */}
           <div
+            title={
+              state === "ERROR" && status?.error
+                ? `Error: ${status.error}`
+                : state === "CONFLICT"
+                ? "Merge conflicts detected"
+                : undefined
+            }
             style={{
               position: "absolute",
               top: "10px",
@@ -506,6 +718,7 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
               borderRadius: "20px",
               padding: "3px 8px",
               zIndex: 2,
+              cursor: state === "ERROR" ? "help" : "default",
             }}
           >
             <div
@@ -541,7 +754,7 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
             style={{
               fontSize: "14px",
               fontWeight: 700,
-              color: "#fff",
+              color: "var(--color-text-primary)",
               marginBottom: "4px",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -551,7 +764,7 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
             {repo.name}
           </h3>
 
-          {/* Branch */}
+          {/* Branch + CI badge */}
           <div
             style={{
               display: "flex",
@@ -569,15 +782,18 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
             <span
               style={{
                 fontSize: "11px",
-                color: "#b3b3b3",
+                color: "var(--color-text-secondary)",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
-                maxWidth: "140px",
+                maxWidth: "120px",
               }}
             >
               {status?.current_branch ?? "—"}
             </span>
+            {ciStatus && ciStatus !== "unknown" && (
+              <CiBadge status={ciStatus} onClick={() => setShowWorkflowRuns(true)} />
+            )}
           </div>
 
           {/* Status counts row */}
@@ -619,7 +835,7 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
                     padding: "2px 7px",
                     borderRadius: "10px",
                     background: "rgba(255,255,255,0.08)",
-                    color: "#b3b3b3",
+                    color: "var(--color-text-secondary)",
                   }}
                 >
                   {status.untracked} new
@@ -646,7 +862,7 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
           <p
             style={{
               fontSize: "11px",
-              color: "#6a6a6a",
+              color: "var(--color-text-muted)",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -713,12 +929,54 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
 
       {/* Context menu */}
       {contextMenu && (
-        <ContextMenu
+        <RepoContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
           repoPath={repo.path}
+          repoName={repo.name}
           conflictsCount={status?.conflicts ?? 0}
+          remoteUrl={remoteUrl}
           onClose={() => setContextMenu(null)}
+          onShowPRs={remoteUrl ? () => setShowPRs(true) : undefined}
+          onShowIssues={remoteUrl ? () => setShowIssues(true) : undefined}
+          onShowWorkflowRuns={remoteUrl ? () => setShowWorkflowRuns(true) : undefined}
+          onShowRelease={remoteUrl ? () => setShowRelease(true) : undefined}
+        />
+      )}
+
+      {/* GitHub Actions workflow runs modal */}
+      {showWorkflowRuns && remoteUrl && (
+        <WorkflowRunsModal
+          repoUrl={remoteUrl}
+          repoName={repo.name}
+          onClose={() => setShowWorkflowRuns(false)}
+        />
+      )}
+
+      {/* GitHub PRs modal */}
+      {showPRs && remoteUrl && (
+        <GitHubPRsModal
+          repoUrl={remoteUrl}
+          repoName={repo.name}
+          onClose={() => setShowPRs(false)}
+        />
+      )}
+
+      {/* GitHub Issues modal */}
+      {showIssues && remoteUrl && (
+        <GitHubIssuesModal
+          repoUrl={remoteUrl}
+          repoName={repo.name}
+          onClose={() => setShowIssues(false)}
+        />
+      )}
+
+      {/* GitHub Release modal */}
+      {showRelease && remoteUrl && (
+        <GitHubReleaseModal
+          repoUrl={remoteUrl}
+          repoName={repo.name}
+          onClose={() => setShowRelease(false)}
         />
       )}
     </>

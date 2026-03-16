@@ -86,7 +86,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
             <h1 style={{ fontSize: "32px", fontWeight: 700, margin: "0 0 16px" }}>
               Welcome to PushVault
             </h1>
-            <p style={{ fontSize: "16px", color: "#b3b3b3", lineHeight: 1.6, margin: "0 0 40px" }}>
+            <p style={{ fontSize: "16px", color: "var(--color-text-secondary)", lineHeight: 1.6, margin: "0 0 40px" }}>
               Multi-repository Git manager built for creatives and engineers.
               Track, sync, and push all your projects from one beautiful dashboard.
             </p>
@@ -105,7 +105,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                 onClick={() => setStep("clone")}
                 style={{
                   background: "transparent", border: "2px solid #535353", borderRadius: "500px",
-                  padding: "14px 32px", color: "#fff", fontSize: "15px", fontWeight: 700,
+                  padding: "14px 32px", color: "var(--color-text-primary)", fontSize: "15px", fontWeight: 700,
                   cursor: "pointer", width: "100%",
                 }}
               >
@@ -116,7 +116,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                   onClick={onScan}
                   style={{
                     background: "transparent", border: "2px solid #535353", borderRadius: "500px",
-                    padding: "14px 32px", color: "#fff", fontSize: "15px", fontWeight: 700,
+                    padding: "14px 32px", color: "var(--color-text-primary)", fontSize: "15px", fontWeight: 700,
                     cursor: "pointer", width: "100%",
                   }}
                 >
@@ -127,7 +127,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                 onClick={onComplete}
                 style={{
                   background: "transparent", border: "none",
-                  color: "#535353", fontSize: "14px", cursor: "pointer",
+                  color: "var(--color-text-disabled)", fontSize: "14px", cursor: "pointer",
                   padding: "8px",
                 }}
               >
@@ -142,7 +142,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
             <h2 style={{ fontSize: "24px", fontWeight: 700, margin: "0 0 8px" }}>
               Add Repository
             </h2>
-            <p style={{ color: "#b3b3b3", margin: "0 0 32px", fontSize: "14px" }}>
+            <p style={{ color: "var(--color-text-secondary)", margin: "0 0 32px", fontSize: "14px" }}>
               Select a folder that contains a Git repository
             </p>
 
@@ -154,16 +154,16 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                   onChange={e => setRepoPath(e.target.value)}
                   placeholder="Repository path..."
                   style={{
-                    flex: 1, background: "#282828", border: "1px solid #535353",
-                    borderRadius: "8px", padding: "10px 14px", color: "#fff",
+                    flex: 1, background: "var(--color-bg-elevated)", border: "1px solid #535353",
+                    borderRadius: "8px", padding: "10px 14px", color: "var(--color-text-primary)",
                     fontSize: "14px", outline: "none",
                   }}
                 />
                 <button
                   onClick={handlePickFolder}
                   style={{
-                    background: "#282828", border: "1px solid #535353",
-                    borderRadius: "8px", padding: "10px 16px", color: "#fff",
+                    background: "var(--color-bg-elevated)", border: "1px solid #535353",
+                    borderRadius: "8px", padding: "10px 16px", color: "var(--color-text-primary)",
                     cursor: "pointer", flexShrink: 0, fontSize: "14px",
                   }}
                 >Browse</button>
@@ -175,8 +175,8 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                 onChange={e => setRepoName(e.target.value)}
                 placeholder="Repository name..."
                 style={{
-                  background: "#282828", border: "1px solid #535353",
-                  borderRadius: "8px", padding: "10px 14px", color: "#fff",
+                  background: "var(--color-bg-elevated)", border: "1px solid #535353",
+                  borderRadius: "8px", padding: "10px 14px", color: "var(--color-text-primary)",
                   fontSize: "14px", outline: "none", width: "100%", boxSizing: "border-box",
                 }}
               />
@@ -187,15 +187,15 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                 onChange={e => setRepoRemote(e.target.value)}
                 placeholder="Remote URL (optional)..."
                 style={{
-                  background: "#282828", border: "1px solid #535353",
-                  borderRadius: "8px", padding: "10px 14px", color: "#fff",
+                  background: "var(--color-bg-elevated)", border: "1px solid #535353",
+                  borderRadius: "8px", padding: "10px 14px", color: "var(--color-text-primary)",
                   fontSize: "14px", outline: "none", width: "100%", boxSizing: "border-box",
                 }}
               />
 
               {/* Color picker */}
               <div>
-                <p style={{ margin: "0 0 8px", fontSize: "12px", color: "#b3b3b3", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                <p style={{ margin: "0 0 8px", fontSize: "12px", color: "var(--color-text-secondary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>
                   Accent Color
                 </p>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -219,7 +219,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                 onClick={() => setStep("welcome")}
                 style={{
                   flex: 1, background: "transparent", border: "2px solid #535353",
-                  borderRadius: "500px", padding: "12px", color: "#fff",
+                  borderRadius: "500px", padding: "12px", color: "var(--color-text-primary)",
                   fontSize: "14px", fontWeight: 700, cursor: "pointer",
                 }}
               >Back</button>
@@ -244,10 +244,10 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
             <h2 style={{ fontSize: "24px", fontWeight: 700, margin: "0 0 8px" }}>
               Clone Repository
             </h2>
-            <p style={{ color: "#b3b3b3", margin: "0 0 32px", fontSize: "14px" }}>
+            <p style={{ color: "var(--color-text-secondary)", margin: "0 0 32px", fontSize: "14px" }}>
               Enter a GitHub URL to clone a repository
             </p>
-            <p style={{ color: "#535353", fontSize: "13px" }}>
+            <p style={{ color: "var(--color-text-disabled)", fontSize: "13px" }}>
               Use the Clone button in the sidebar for full clone options.
             </p>
             <button

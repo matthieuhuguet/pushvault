@@ -92,6 +92,60 @@
   --z-toast: 9999;
 }
 
+/* ── Light Theme ──────────────────────────────────────────── */
+:root[data-theme="light"] {
+  /* Backgrounds */
+  --color-bg-base: #f5f5f5;
+  --color-bg-primary: #ffffff;
+  --color-bg-card: #f0f0f0;
+  --color-bg-elevated: #e8e8e8;
+  --color-bg-highlight: #d8d8d8;
+  --color-bg-hover: #e0e0e0;
+
+  /* Accent — slightly richer for contrast on light */
+  --color-accent: #1aa34a;
+  --color-accent-hover: #17c653;
+  --color-accent-dim: rgba(26, 163, 74, 0.12);
+  --color-accent-border: rgba(26, 163, 74, 0.35);
+
+  /* Text */
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #555555;
+  --color-text-muted: #888888;
+  --color-text-disabled: #aaaaaa;
+
+  /* Status — same hues, tuned for light bg */
+  --color-success: #1aa34a;
+  --color-warning: #d08700;
+  --color-error: #d1392f;
+  --color-conflict: #d96800;
+  --color-info: #2b7fd4;
+
+  /* Borders */
+  --color-border: rgba(0, 0, 0, 0.12);
+  --color-border-subtle: rgba(0, 0, 0, 0.06);
+
+  /* Shadows — lighter */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.14);
+}
+
+/* Scrollbar overrides for light theme */
+:root[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+:root[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Selection in light mode */
+:root[data-theme="light"] ::selection {
+  background: var(--color-accent-dim);
+  color: var(--color-text-primary);
+}
+
 /* ── Reset ─────────────────────────────────────────────────── */
 *,
 *::before,
@@ -110,7 +164,8 @@ html {
 
 body {
   height: 100%;
-  background: var(--color-bg-primary);
+  /* Transparent so Windows 11 Mica backdrop bleeds through the dark overlay */
+  background: transparent;
   color: var(--color-text-primary);
   font-family: var(--font-sans);
   font-size: var(--font-size-base);
@@ -417,6 +472,26 @@ button:disabled {
 .badge-error  { background: var(--color-error);  color: #fff; }
 .badge-warn   { background: var(--color-warning); color: #000; }
 .badge-muted  { background: var(--color-bg-highlight); color: var(--color-text-secondary); }
+
+/* ── Card enter animation ────────────────────────────────────── */
+@keyframes card-enter {
+  from { opacity: 0; transform: scale(0.94) translateY(10px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+.card-enter {
+  animation: card-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── List row enter animation ────────────────────────────────── */
+@keyframes list-row-enter {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+.list-row-enter {
+  animation: list-row-enter 200ms ease both;
+}
 
 /* ── Selection ──────────────────────────────────────────────── */
 ::selection {

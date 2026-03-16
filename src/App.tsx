@@ -18,6 +18,14 @@ import { KeyboardHelp } from "./components/KeyboardHelp/KeyboardHelp";
 import { CloneDialog } from "./components/Clone/CloneDialog";
 import { GitignoreEditor } from "./components/GitignoreEditor/GitignoreEditor";
 import { ScanRepos } from "./components/ScanRepos/ScanRepos";
+import { WorktreeManager } from "./components/WorktreeManager/WorktreeManager";
+import { SubmoduleManager } from "./components/SubmoduleManager/SubmoduleManager";
+import { CommandPalette } from "./components/CommandPalette/CommandPalette";
+import { ConfirmModal } from "./components/ConfirmModal/ConfirmModal";
+import { PromptModal } from "./components/PromptModal/PromptModal";
+import { LfsManager } from "./components/LfsManager/LfsManager";
+import { BisectPanel } from "./components/BisectPanel/BisectPanel";
+import { RebasePanel } from "./components/RebasePanel/RebasePanel";
 import { useRepoStore } from "./store/repoStore";
 import { useUIStore } from "./store/uiStore";
 import { useKeyboard } from "./hooks/useKeyboard";
@@ -34,6 +42,7 @@ export default function App() {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [showClone, setShowClone] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
 
   const showOnboarding = !loading && config !== null && config.repos.length === 0 && !onboardingDismissed;
 
@@ -47,13 +56,34 @@ export default function App() {
     isSyncing,
     setIsSyncing,
     setSyncProgress,
+    theme,
+    setTheme,
   } = useUIStore();
 
   const addToast = useToastStore((s) => s.add);
 
+  // Restore theme from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("pushvault-theme") as "dark" | "light" | null;
+    if (saved && saved !== theme) setTheme(saved);
+  }, []);
+
+  // Apply theme to DOM and persist
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("pushvault-theme", theme);
+  }, [theme]);
+
   useEffect(() => {
     loadConfig().then(() => refreshAllStatuses());
   }, []);
+
+  // Set up filesystem watchers whenever repo list changes
+  useEffect(() => {
+    if (!config?.repos.length) return;
+    const paths = config.repos.map((r) => r.path);
+    ipc.setupFileWatchers(paths).catch(() => {/* watchers are best-effort */});
+  }, [config?.repos.map((r) => r.path).join("|")]);
 
   useEffect(() => {
     const intervalMinutes = config?.auto_check_interval_minutes ?? 5;
@@ -68,6 +98,17 @@ export default function App() {
       if (event.payload.step === "done") {
         setTimeout(() => setSyncProgress(""), 2000);
       }
+    }).then(fn => { unlisten = fn; });
+    return () => unlisten?.();
+  }, []);
+
+  // Real-time status refresh via filesystem watcher events
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<string>("repo-changed", (event) => {
+      const repoPath = event.payload;
+      const { refreshStatus } = useRepoStore.getState();
+      refreshStatus(repoPath);
     }).then(fn => { unlisten = fn; });
     return () => unlisten?.();
   }, []);
@@ -103,10 +144,13 @@ export default function App() {
   useKeyboard({
     "ctrl+s": handleSyncAll,
     "ctrl+r": () => refreshAllStatuses(),
+    "f5": () => refreshAllStatuses(),
     "ctrl+k": () => document.getElementById("search-input")?.focus(),
     "ctrl+,": () => setActiveTab("settings"),
     "ctrl+/": () => setShowKeyboardHelp((v) => !v),
     "ctrl+n": () => setShowClone(true),
+    "ctrl+p": () => setShowCommandPalette(true),
+    "ctrl+shift+p": () => setShowCommandPalette(true),
     "escape": () => {
       const { activePanel } = useUIStore.getState();
       if (activePanel) {
@@ -126,8 +170,8 @@ export default function App() {
       style={{
         display: "flex",
         height: "100vh",
-        background: "#121212",
-        color: "#fff",
+        background: theme === "light" ? "var(--color-bg-primary)" : "rgba(18, 18, 18, 0.92)",
+        color: "var(--color-text-primary)",
         fontFamily: "'Circular', 'Gotham', system-ui, -apple-system, sans-serif",
         overflow: "hidden",
       }}
@@ -154,7 +198,7 @@ export default function App() {
             flex: 1,
             overflow: "auto",
             padding: "24px",
-            background: "#121212",
+            background: "var(--color-bg-primary)",
           }}
         >
           {activeTab === "dashboard" && <Dashboard />}
@@ -168,14 +212,14 @@ export default function App() {
                 height: "100%",
                 flexDirection: "column",
                 gap: "16px",
-                color: "#535353",
+                color: "var(--color-text-disabled)",
               }}
             >
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.3 }}>
                 <circle cx="12" cy="12" r="9" stroke="#b3b3b3" strokeWidth="2" />
                 <polyline points="12 7 12 12 15 15" stroke="#b3b3b3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <p style={{ fontSize: "15px", fontWeight: 600, color: "#fff" }}>
+              <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text-primary)" }}>
                 Global History
               </p>
               <p style={{ fontSize: "13px" }}>
@@ -252,6 +296,41 @@ export default function App() {
         <ScanRepos onClose={() => setActivePanel(null)} />
       )}
 
+      {activePanel === "worktrees" && selectedRepoPath && (
+        <WorktreeManager
+          repoPath={selectedRepoPath}
+          onClose={() => setActivePanel(null)}
+        />
+      )}
+
+      {activePanel === "submodules" && selectedRepoPath && (
+        <SubmoduleManager
+          repoPath={selectedRepoPath}
+          onClose={() => setActivePanel(null)}
+        />
+      )}
+
+      {activePanel === "lfs" && selectedRepoPath && (
+        <LfsManager
+          repoPath={selectedRepoPath}
+          onClose={() => setActivePanel(null)}
+        />
+      )}
+
+      {activePanel === "bisect" && selectedRepoPath && (
+        <BisectPanel
+          repoPath={selectedRepoPath}
+          onClose={() => setActivePanel(null)}
+        />
+      )}
+
+      {activePanel === "rebase" && selectedRepoPath && (
+        <RebasePanel
+          repoPath={selectedRepoPath}
+          onClose={() => setActivePanel(null)}
+        />
+      )}
+
       {/* Onboarding wizard */}
       {showOnboarding && (
         <Onboarding
@@ -270,8 +349,22 @@ export default function App() {
         <CloneDialog onClose={() => setShowClone(false)} />
       )}
 
+      {/* Command palette */}
+      {showCommandPalette && (
+        <CommandPalette
+          onClose={() => setShowCommandPalette(false)}
+          onShowKeyboardHelp={() => { setShowCommandPalette(false); setShowKeyboardHelp(true); }}
+          onShowClone={() => { setShowCommandPalette(false); setShowClone(true); }}
+          onShowScan={() => { setShowCommandPalette(false); setActivePanel("scan"); }}
+        />
+      )}
+
       {/* Toast notifications */}
       <ToastContainer />
+
+      {/* Destructive operation confirmation modal */}
+      <ConfirmModal />
+      <PromptModal />
     </div>
   );
 }

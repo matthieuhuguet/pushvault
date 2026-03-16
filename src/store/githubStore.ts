@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { ipc } from "../lib/ipc";
 
 export interface GitHubUser {
   login: string;
@@ -29,11 +30,13 @@ interface GitHubStore {
   repos: GitHubRepo[];
   loading: boolean;
   error: string | null;
+  ciStatuses: Record<string, "success" | "failure" | "in_progress" | "unknown">;
 
   setToken: (token: string) => void;
   clearToken: () => void;
   fetchUser: () => Promise<void>;
   fetchRepos: () => Promise<void>;
+  fetchCiStatus: (repoUrl: string) => Promise<void>;
 }
 
 async function githubFetch<T>(endpoint: string, token: string): Promise<T> {
@@ -55,6 +58,7 @@ export const useGitHubStore = create<GitHubStore>((set, get) => ({
   repos: [],
   loading: false,
   error: null,
+  ciStatuses: {},
 
   setToken: (token) => {
     localStorage.setItem("github_token", token);
@@ -90,6 +94,21 @@ export const useGitHubStore = create<GitHubStore>((set, get) => ({
       set({ repos, loading: false });
     } catch (e) {
       set({ error: String(e), loading: false });
+    }
+  },
+
+  fetchCiStatus: async (repoUrl: string) => {
+    const { token } = get();
+    try {
+      const result = await ipc.getGithubCiStatus(repoUrl, token);
+      const status = result as "success" | "failure" | "in_progress" | "unknown";
+      set((state) => ({
+        ciStatuses: { ...state.ciStatuses, [repoUrl]: status },
+      }));
+    } catch {
+      set((state) => ({
+        ciStatuses: { ...state.ciStatuses, [repoUrl]: "unknown" },
+      }));
     }
   },
 }));

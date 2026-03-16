@@ -60,7 +60,7 @@ export function GitignoreEditor({ repoPath, repoName, onClose }: Props) {
       display: "flex", alignItems: "center", justifyContent: "center",
     }}>
       <div style={{
-        background: "#282828", borderRadius: "12px",
+        background: "var(--color-bg-elevated)", borderRadius: "12px",
         width: "640px", maxWidth: "95vw",
         maxHeight: "85vh", display: "flex", flexDirection: "column",
         overflow: "hidden",
@@ -74,14 +74,14 @@ export function GitignoreEditor({ repoPath, repoName, onClose }: Props) {
         }}>
           <div>
             <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700 }}>.gitignore Editor</h2>
-            {repoName && <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#b3b3b3" }}>{repoName}</p>}
+            {repoName && <p style={{ margin: "4px 0 0", fontSize: "13px", color: "var(--color-text-secondary)" }}>{repoName}</p>}
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#b3b3b3", cursor: "pointer", fontSize: "20px" }}>&#x2715;</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--color-text-secondary)", cursor: "pointer", fontSize: "20px" }}>&#x2715;</button>
         </div>
 
         {/* Quick-add patterns */}
         <div style={{ padding: "12px 24px", borderBottom: "1px solid #3d3d3d" }}>
-          <p style={{ margin: "0 0 8px", fontSize: "11px", color: "#b3b3b3", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+          <p style={{ margin: "0 0 8px", fontSize: "11px", color: "var(--color-text-secondary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>
             Quick add
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
@@ -90,9 +90,9 @@ export function GitignoreEditor({ repoPath, repoName, onClose }: Props) {
                 key={p}
                 onClick={() => addPattern(p)}
                 style={{
-                  background: "#3d3d3d", border: "1px solid #535353",
+                  background: "var(--color-bg-highlight)", border: "1px solid #535353",
                   borderRadius: "4px", padding: "4px 8px",
-                  color: "#b3b3b3", fontSize: "11px",
+                  color: "var(--color-text-secondary)", fontSize: "11px",
                   cursor: "pointer", fontFamily: "monospace",
                 }}
               >{p}</button>
@@ -103,14 +103,14 @@ export function GitignoreEditor({ repoPath, repoName, onClose }: Props) {
         {/* Editor */}
         <div style={{ flex: 1, padding: "16px 24px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {loading ? (
-            <p style={{ color: "#535353", textAlign: "center", padding: "32px" }}>Loading...</p>
+            <p style={{ color: "var(--color-text-disabled)", textAlign: "center", padding: "32px" }}>Loading...</p>
           ) : (
             <textarea
               value={content}
               onChange={e => setContent(e.target.value)}
               spellCheck={false}
               style={{
-                flex: 1, background: "#1e1e1e",
+                flex: 1, background: "var(--color-bg-card)",
                 border: "1px solid #535353", borderRadius: "8px",
                 padding: "12px", color: "#e0e0e0",
                 fontSize: "13px", fontFamily: "Cascadia Code, Consolas, monospace",
@@ -126,7 +126,7 @@ export function GitignoreEditor({ repoPath, repoName, onClose }: Props) {
           borderTop: "1px solid #3d3d3d",
           display: "flex", gap: "8px", justifyContent: "flex-end",
         }}>
-          <button onClick={onClose} style={{ background: "transparent", border: "1px solid #535353", borderRadius: "500px", padding: "8px 20px", color: "#fff", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
+          <button onClick={onClose} style={{ background: "transparent", border: "1px solid #535353", borderRadius: "500px", padding: "8px 20px", color: "var(--color-text-primary)", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
           <button
             onClick={handleSave}
             disabled={saving}

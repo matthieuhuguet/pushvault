@@ -3,6 +3,8 @@ import { ipc } from "../../lib/ipc";
 import { useRepoStore } from "../../store/repoStore";
 import { useUIStore } from "../../store/uiStore";
 import { useToastStore } from "../../store/toastStore";
+import { useActivityStore } from "../../store/activityStore";
+import { useConfirmStore } from "../../store/confirmStore";
 import { DiffViewer } from "../Diff/DiffViewer";
 import { CommitInput } from "../CommitInput/CommitInput";
 import type { DiffResult, FileEntry } from "../../types";
@@ -38,7 +40,7 @@ function StatusIcon({ status }: { status: string }) {
   if (s.includes("renamed") || s === "r") return <span style={{ color: "#F5A623", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>R</span>;
   if (s.includes("untracked") || s === "?") return <span style={{ color: "#B3B3B3", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>?</span>;
   if (s.includes("conflict") || s === "u" || s === "!") return <span style={{ color: "#E8525A", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>!</span>;
-  return <span style={{ color: "#535353", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>·</span>;
+  return <span style={{ color: "var(--color-text-disabled)", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>·</span>;
 }
 
 function formatSize(bytes: number): string {
@@ -62,7 +64,7 @@ interface FileContextMenuProps {
 }
 
 function FileContextMenu({
-  x, y, file, isStaged, onClose, onStage, onUnstage, onDiscard, onDelete,
+  x, y, file, isStaged, repoPath, onClose, onStage, onUnstage, onDiscard, onDelete,
 }: FileContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const addToast = useToastStore((s) => s.add);
@@ -87,7 +89,7 @@ function FileContextMenu({
   }, [onClose]);
 
   const menuWidth = 200;
-  const menuHeight = 180;
+  const menuHeight = 210;
   const adjustedX = Math.min(x, window.innerWidth - menuWidth - 8);
   const adjustedY = Math.min(y, window.innerHeight - menuHeight - 8);
 
@@ -127,22 +129,50 @@ function FileContextMenu({
   const handleOpenInEditor = async () => {
     onClose();
     try {
-      await ipc.openInVscode(file.path);
+      // Construct absolute path from repo root + relative file path
+      const sep = repoPath.includes("\\") ? "\\" : "/";
+      const absolutePath = `${repoPath}${sep}${file.path}`;
+      await ipc.openInVscode(absolutePath);
     } catch (e) {
       addToast("error", `Failed to open in editor: ${e}`);
     }
   };
 
-  const handleDiscard = () => {
-    if (confirm(`Discard changes to "${file.path}"? This cannot be undone.`)) {
-      onDiscard?.();
+  const handleRevealInExplorer = async () => {
+    onClose();
+    try {
+      const sep = repoPath.includes("\\") ? "\\" : "/";
+      const absolutePath = `${repoPath}${sep}${file.path}`;
+      await ipc.revealInExplorer(absolutePath);
+    } catch (e) {
+      addToast("error", `Failed to reveal in Explorer: ${e}`);
     }
   };
 
-  const handleDelete = () => {
-    if (confirm(`Delete "${file.path}"? This will permanently remove the file.`)) {
-      onDelete?.();
-    }
+  const handleCopyPath = () => {
+    navigator.clipboard.writeText(file.path).catch(() => {});
+    onClose();
+    addToast("info", `Copied: ${file.path}`);
+  };
+
+  const handleDiscard = async () => {
+    const ok = await useConfirmStore.getState().request({
+      title: "Discard changes?",
+      description: `Discard changes to "${file.path}"? This cannot be undone.`,
+      danger: true,
+      confirmLabel: "Discard",
+    });
+    if (ok) onDiscard?.();
+  };
+
+  const handleDelete = async () => {
+    const ok = await useConfirmStore.getState().request({
+      title: "Delete file?",
+      description: `Delete "${file.path}"? This will permanently remove the file.`,
+      danger: true,
+      confirmLabel: "Delete",
+    });
+    if (ok) onDelete?.();
   };
 
   return (
@@ -152,8 +182,8 @@ function FileContextMenu({
         position: "fixed",
         top: adjustedY,
         left: adjustedX,
-        background: "#282828",
-        border: "1px solid rgba(255,255,255,0.1)",
+        background: "var(--color-bg-elevated)",
+        border: "1px solid var(--color-border)",
         borderRadius: "10px",
         padding: "4px 0",
         boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
@@ -168,6 +198,8 @@ function FileContextMenu({
       {isUntracked && onDelete && menuItem("Delete File", handleDelete, true)}
       <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
       {menuItem("Open in Editor", handleOpenInEditor)}
+      {menuItem("Reveal in Explorer", handleRevealInExplorer)}
+      {menuItem("Copy Path", handleCopyPath)}
     </div>
   );
 }
@@ -213,7 +245,7 @@ function SectionHeader({
           style={{
             transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
             transition: "transform 150ms ease",
-            color: "#6a6a6a",
+            color: "var(--color-text-muted)",
           }}
         >
           <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -228,7 +260,7 @@ function SectionHeader({
             padding: "1px 6px",
             borderRadius: "8px",
             background: "rgba(255,255,255,0.08)",
-            color: "#b3b3b3",
+            color: "var(--color-text-secondary)",
           }}
         >
           {count}
@@ -360,7 +392,7 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
             style={{
               fontSize: "12px",
               fontWeight: 500,
-              color: "#fff",
+              color: "var(--color-text-primary)",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -372,7 +404,7 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
             <div
               style={{
                 fontSize: "10px",
-                color: "#535353",
+                color: "var(--color-text-disabled)",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
@@ -385,7 +417,7 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
 
         {/* File size */}
         {file.size > 0 && (
-          <span style={{ fontSize: "10px", color: "#535353", flexShrink: 0 }}>
+          <span style={{ fontSize: "10px", color: "var(--color-text-disabled)", flexShrink: 0 }}>
             {formatSize(file.size)}
           </span>
         )}
@@ -440,7 +472,7 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
                   borderRadius: "4px",
                   background: "rgba(255,255,255,0.08)",
                   border: "none",
-                  color: "#b3b3b3",
+                  color: "var(--color-text-secondary)",
                   cursor: "pointer",
                   fontSize: "13px",
                   display: "flex",
@@ -463,10 +495,14 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
             {onDiscard && (
               <button
                 title="Discard changes"
-                onClick={() => {
-                  if (confirm(`Discard changes to "${file.path}"? This cannot be undone.`)) {
-                    onDiscard!();
-                  }
+                onClick={async () => {
+                  const ok = await useConfirmStore.getState().request({
+                    title: "Discard changes?",
+                    description: `Discard changes to "${file.path}"? This cannot be undone.`,
+                    danger: true,
+                    confirmLabel: "Discard",
+                  });
+                  if (ok) onDiscard!();
                 }}
                 style={{
                   width: "22px",
@@ -522,9 +558,11 @@ export function StagingArea() {
   const { selectedRepoPath, setActivePanel } = useUIStore();
   const { config, refreshStatus } = useRepoStore();
   const addToast = useToastStore((s) => s.add);
+  const logActivity = useActivityStore((s) => s.addEntry);
 
   const repoPath = selectedRepoPath ?? "";
   const repoConfig = config?.repos.find((r) => r.path === repoPath);
+  const repoDisplayName = repoConfig?.name ?? repoPath.split(/[/\\]/).pop() ?? "Repo";
 
   // File lists
   const [staged, setStaged] = useState<FileEntry[]>([]);
@@ -541,6 +579,15 @@ export function StagingArea() {
   const [commitMsg, setCommitMsg] = useState("");
   const [isCommitting, setIsCommitting] = useState(false);
   const [showAmend, setShowAmend] = useState(false);
+  const [currentBranch, setCurrentBranch] = useState<string | null>(null);
+
+  // Load branch name for PR button
+  useEffect(() => {
+    if (!repoPath) return;
+    ipc.getRepoStatus(repoPath)
+      .then(s => setCurrentBranch(s.current_branch))
+      .catch(() => {});
+  }, [repoPath]);
 
   // Section expand state
   const [expandConflicts, setExpandConflicts] = useState(true);
@@ -580,18 +627,48 @@ export function StagingArea() {
     loadFiles();
   }, [loadFiles]);
 
-  // Keyboard Delete key to discard selected file
+  // Keyboard shortcuts within staging area
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      // Ctrl+A: Stage all
+      if ((e.ctrlKey || e.metaKey) && e.key === "a" && !e.shiftKey) {
+        e.preventDefault();
+        handleStageAll();
+        return;
+      }
+      // Ctrl+Shift+U: Unstage all
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "u" || e.key === "U")) {
+        e.preventDefault();
+        handleUnstageAll();
+        return;
+      }
+      // Ctrl+Enter: commit
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        if (commitMsg.trim() && (staged.length > 0 || showAmend)) handleCommit(false);
+        return;
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [staged, commitMsg, showAmend]);
+
+  // Keyboard Delete key to discard selected file
+  useEffect(() => {
+    const handleKey = async (e: KeyboardEvent) => {
       if (e.key === "Delete" && selectedFile && !selectedFile.staged) {
         const allUnstaged = [...modified, ...untracked];
         const file = allUnstaged.find((f) => f.path === selectedFile.path);
         if (file) {
           const isUntracked = file.status === "?" || file.status === "untracked";
           const action = isUntracked ? "Delete" : "Discard changes to";
-          if (confirm(`${action} "${selectedFile.path}"? This cannot be undone.`)) {
-            handleDiscardFile(selectedFile.path);
-          }
+          const ok = await useConfirmStore.getState().request({
+            title: isUntracked ? "Delete file?" : "Discard changes?",
+            description: `${action} "${selectedFile.path}"? This cannot be undone.`,
+            danger: true,
+            confirmLabel: isUntracked ? "Delete" : "Discard",
+          });
+          if (ok) handleDiscardFile(selectedFile.path);
         }
       }
     };
@@ -640,20 +717,25 @@ export function StagingArea() {
   const handleDiscardFile = async (file: string) => {
     try {
       await ipc.discardFile(repoPath, file);
+      logActivity({ repoName: repoDisplayName, operation: "Discard File", success: true, message: file, isDestructive: true });
       await loadFiles();
       refreshStatus(repoPath);
     } catch (e) {
       addToast("error", `Discard failed: ${e}`);
+      logActivity({ repoName: repoDisplayName, operation: "Discard File", success: false, message: String(e), isDestructive: true });
     }
   };
 
   const handleDeleteFile = async (file: string) => {
     try {
-      await ipc.discardFile(repoPath, file);
+      // Untracked files: delete from disk (not checkout HEAD)
+      await ipc.deleteUntrackedFile(repoPath, file);
+      logActivity({ repoName: repoDisplayName, operation: "Delete Untracked", success: true, message: file, isDestructive: true });
       await loadFiles();
       refreshStatus(repoPath);
     } catch (e) {
       addToast("error", `Delete failed: ${e}`);
+      logActivity({ repoName: repoDisplayName, operation: "Delete Untracked", success: false, message: String(e), isDestructive: true });
     }
   };
 
@@ -677,34 +759,76 @@ export function StagingArea() {
     }
   };
 
+  const handleAmendChange = async (v: boolean) => {
+    setShowAmend(v);
+    if (v && !commitMsg.trim()) {
+      // Auto-fill with last commit message
+      try {
+        const lastMsg = await ipc.getLastCommitMessage(repoPath);
+        if (lastMsg) setCommitMsg(lastMsg);
+      } catch {
+        // ignore
+      }
+    }
+  };
+
   const handleCommit = async (andPush = false) => {
     if (!commitMsg.trim()) {
       addToast("warning", "Commit message is required");
       return;
     }
-    if (staged.length === 0) {
+    // In amend mode, allow 0 staged files (message-only amend)
+    if (staged.length === 0 && !showAmend) {
       addToast("warning", "Nothing staged to commit");
       return;
     }
     setIsCommitting(true);
     try {
-      const hash = await ipc.commitChanges(repoPath, commitMsg.trim(), showAmend);
+      const gpgSign = config?.gpg_sign_commits ?? false;
+      const gpgKeyId = config?.gpg_key_id ?? "";
+      const hash = await ipc.commitChanges(repoPath, commitMsg.trim(), showAmend, gpgSign, gpgKeyId);
       setCommitMsg("");
       addToast("success", `Committed ${hash.slice(0, 7)}: ${commitMsg.slice(0, 40)}`);
+      const op = showAmend ? "Amend Commit" : "Commit";
+      logActivity({ repoName: repoDisplayName, operation: op, success: true, message: `${hash.slice(0, 7)}: ${commitMsg.slice(0, 60)}`, isDestructive: showAmend });
       if (andPush) {
         await ipc.pushRepo(repoPath, "");
         addToast("success", "Pushed to remote");
+        logActivity({ repoName: repoDisplayName, operation: "Push", success: true, message: "Pushed after commit", isDestructive: false });
       }
       await loadFiles();
       refreshStatus(repoPath);
     } catch (e) {
       addToast("error", `Commit failed: ${e}`);
+      logActivity({ repoName: repoDisplayName, operation: "Commit", success: false, message: String(e), isDestructive: false });
     } finally {
       setIsCommitting(false);
     }
   };
 
   const repoName = repoConfig?.name ?? repoPath.split(/[/\\]/).pop() ?? "Repo";
+
+  /** Extract GitHub web URL from remote. Returns null if not GitHub. */
+  const getGitHubPrUrl = (): string | null => {
+    const remote = repoConfig?.remote;
+    if (!remote || !currentBranch) return null;
+    const cleanRemote = remote.trim().replace(/\.git$/, "");
+    let base: string | null = null;
+    if (cleanRemote.startsWith("https://github.com/")) {
+      base = cleanRemote;
+    } else {
+      const sshMatch = cleanRemote.match(/git@github\.com[:/](.+)$/);
+      if (sshMatch) base = `https://github.com/${sshMatch[1]}`;
+    }
+    if (!base) return null;
+    // For main/master branches, just open repo; otherwise open compare page
+    if (currentBranch === "main" || currentBranch === "master") {
+      return `${base}/pulls/new`;
+    }
+    return `${base}/compare/${currentBranch}?expand=1`;
+  };
+
+  const gitHubPrUrl = getGitHubPrUrl();
 
   return (
     <div
@@ -723,8 +847,8 @@ export function StagingArea() {
       <div
         style={{
           height: "56px",
-          background: "#1a1a1a",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          background: "var(--color-bg-card)",
+          borderBottom: "1px solid var(--color-border)",
           display: "flex",
           alignItems: "center",
           padding: "0 20px",
@@ -746,15 +870,55 @@ export function StagingArea() {
           style={{
             fontSize: "15px",
             fontWeight: 700,
-            color: "#fff",
+            color: "var(--color-text-primary)",
             flex: 1,
           }}
         >
           {repoName}
-          <span style={{ fontSize: "12px", color: "#6a6a6a", fontWeight: 400, marginLeft: "10px" }}>
+          <span style={{ fontSize: "12px", color: "var(--color-text-muted)", fontWeight: 400, marginLeft: "10px" }}>
             Changes
           </span>
         </h2>
+
+        {/* Create PR button (GitHub only) */}
+        {gitHubPrUrl && (
+          <a
+            href={gitHubPrUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Create Pull Request on GitHub"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              padding: "5px 12px",
+              borderRadius: "20px",
+              background: "rgba(61,155,233,0.1)",
+              border: "1px solid rgba(61,155,233,0.3)",
+              color: "#3d9be9",
+              fontSize: "12px",
+              fontWeight: 600,
+              textDecoration: "none",
+              transition: "all 120ms ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.background = "rgba(61,155,233,0.2)";
+              (e.currentTarget as HTMLAnchorElement).style.color = "#6bb8f5";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.background = "rgba(61,155,233,0.1)";
+              (e.currentTarget as HTMLAnchorElement).style.color = "#3d9be9";
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <circle cx="18" cy="18" r="3" stroke="currentColor" strokeWidth="2" />
+              <circle cx="6" cy="6" r="3" stroke="currentColor" strokeWidth="2" />
+              <path d="M13 6h3a2 2 0 0 1 2 2v7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <line x1="6" y1="9" x2="6" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            Create PR
+          </a>
+        )}
 
         <button
           onClick={loadFiles}
@@ -765,7 +929,7 @@ export function StagingArea() {
             borderRadius: "50%",
             background: "rgba(255,255,255,0.06)",
             border: "none",
-            color: "#b3b3b3",
+            color: "var(--color-text-secondary)",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -795,7 +959,7 @@ export function StagingArea() {
             borderRadius: "50%",
             background: "rgba(255,255,255,0.08)",
             border: "none",
-            color: "#b3b3b3",
+            color: "var(--color-text-secondary)",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -841,7 +1005,7 @@ export function StagingArea() {
                   alignItems: "center",
                   justifyContent: "center",
                   gap: "10px",
-                  color: "#6a6a6a",
+                  color: "var(--color-text-muted)",
                   fontSize: "13px",
                 }}
               >
@@ -903,7 +1067,7 @@ export function StagingArea() {
                       style={{
                         padding: "10px 16px",
                         fontSize: "11px",
-                        color: "#535353",
+                        color: "var(--color-text-disabled)",
                         fontStyle: "italic",
                       }}
                     >
@@ -950,7 +1114,7 @@ export function StagingArea() {
                       style={{
                         padding: "10px 16px",
                         fontSize: "11px",
-                        color: "#535353",
+                        color: "var(--color-text-disabled)",
                         fontStyle: "italic",
                       }}
                     >
@@ -982,13 +1146,23 @@ export function StagingArea() {
                     expanded={expandUntracked}
                     onToggle={() => setExpandUntracked((v) => !v)}
                     accent="#b3b3b3"
+                    actions={
+                      untracked.length > 0 ? (
+                        <MiniBtn
+                          label="Stage all"
+                          title="Stage all untracked files"
+                          onClick={handleStageAll}
+                          color="#1DB954"
+                        />
+                      ) : undefined
+                    }
                   />
                   {expandUntracked && untracked.length === 0 && (
                     <div
                       style={{
                         padding: "10px 16px",
                         fontSize: "11px",
-                        color: "#535353",
+                        color: "var(--color-text-disabled)",
                         fontStyle: "italic",
                       }}
                     >
@@ -1020,7 +1194,7 @@ export function StagingArea() {
                       style={{
                         padding: "48px 24px",
                         textAlign: "center",
-                        color: "#535353",
+                        color: "var(--color-text-disabled)",
                       }}
                     >
                       <svg
@@ -1051,7 +1225,7 @@ export function StagingArea() {
           {/* Commit area */}
           <div
             style={{
-              borderTop: "1px solid rgba(255,255,255,0.06)",
+              borderTop: "1px solid var(--color-border-subtle)",
               padding: "14px 16px",
               background: "#161616",
               flexShrink: 0,
@@ -1064,7 +1238,7 @@ export function StagingArea() {
               onCommitAndPush={() => handleCommit(true)}
               disabled={isCommitting}
               amend={showAmend}
-              onAmendChange={setShowAmend}
+              onAmendChange={handleAmendChange}
               stagedCount={staged.length}
             />
           </div>
@@ -1072,7 +1246,44 @@ export function StagingArea() {
 
         {/* Right panel: diff viewer */}
         <div style={{ flex: 1, overflow: "hidden" }}>
-          <DiffViewer diff={diff} loading={diffLoading} />
+          <DiffViewer
+            diff={diff}
+            loading={diffLoading}
+            repoPath={repoPath}
+            onStageHunk={
+              selectedFile && !selectedFile.staged
+                ? async (patch) => {
+                    try {
+                      await ipc.stageHunk(repoPath, patch);
+                      await loadFiles();
+                      refreshStatus(repoPath);
+                    } catch (e) {
+                      addToast("error", `Stage hunk failed: ${e}`);
+                    }
+                  }
+                : undefined
+            }
+            onDiscardHunk={
+              selectedFile && !selectedFile.staged
+                ? async (patch) => {
+                    const ok = await useConfirmStore.getState().request({
+                      title: "Discard hunk?",
+                      description: "Discard this hunk? This cannot be undone.",
+                      danger: true,
+                      confirmLabel: "Discard",
+                    });
+                    if (!ok) return;
+                    try {
+                      await ipc.discardHunk(repoPath, patch);
+                      await loadFiles();
+                      refreshStatus(repoPath);
+                    } catch (e) {
+                      addToast("error", `Discard hunk failed: ${e}`);
+                    }
+                  }
+                : undefined
+            }
+          />
         </div>
       </div>
     </div>

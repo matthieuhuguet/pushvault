@@ -212,14 +212,41 @@ export function BottomBar() {
     }
   };
 
+  const [isGcRunning, setIsGcRunning] = useState(false);
+
+  const handleGcAll = async () => {
+    if (isGcRunning || isSyncing) return;
+    const repos = config?.repos ?? [];
+    if (!repos.length) return;
+
+    setIsGcRunning(true);
+    addToast("info", "Running GC & Prune on all repos…");
+    let ok = 0;
+    let fail = 0;
+    for (const repo of repos) {
+      try {
+        await ipc.gitGc(repo.path);
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    setIsGcRunning(false);
+    if (fail === 0) {
+      addToast("success", `GC & Prune complete on ${ok} repos`);
+    } else {
+      addToast("warning", `GC done on ${ok} repos, ${fail} failed`);
+    }
+  };
+
   const repoCount = config?.repos.length ?? 0;
 
   return (
     <div
       style={{
         height: "64px",
-        background: "#000000",
-        borderTop: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--color-bg-base)",
+        borderTop: "1px solid var(--color-border)",
         display: "flex",
         alignItems: "center",
         paddingLeft: "24px",
@@ -255,7 +282,7 @@ export function BottomBar() {
           </div>
         ) : (
           <div>
-            <span style={{ fontSize: "12px", color: "#6a6a6a" }}>
+            <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
               {lastSynced
                 ? `Last synced: ${lastSyncedText}`
                 : "Not synced yet"}
@@ -263,7 +290,7 @@ export function BottomBar() {
             {lastSynced && lastSyncedCount !== null && (
               <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "1px" }}>
                 <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1DB954" }} />
-                <span style={{ fontSize: "10px", color: "#535353" }}>
+                <span style={{ fontSize: "10px", color: "var(--color-text-disabled)" }}>
                   {lastSyncedCount} {lastSyncedCount === 1 ? "repo" : "repos"} synced
                 </span>
               </div>
@@ -271,7 +298,7 @@ export function BottomBar() {
             {!lastSynced && repoCount > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "1px" }}>
                 <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1DB954" }} />
-                <span style={{ fontSize: "10px", color: "#535353" }}>
+                <span style={{ fontSize: "10px", color: "var(--color-text-disabled)" }}>
                   {repoCount} {repoCount === 1 ? "repo" : "repos"} tracked
                 </span>
               </div>
@@ -352,6 +379,43 @@ export function BottomBar() {
           </button>
         )}
 
+        {/* GC & Prune All */}
+        <button
+          onClick={handleGcAll}
+          disabled={isGcRunning || isSyncing || repoCount === 0}
+          title="Run git gc --prune=now on all repositories"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "7px 16px",
+            background: "rgba(255,255,255,0.06)",
+            color: isGcRunning ? "#6a6a6a" : "#b3b3b3",
+            border: "1px solid var(--color-border)",
+            borderRadius: "20px",
+            fontSize: "12px",
+            fontWeight: 600,
+            cursor: isGcRunning || isSyncing || repoCount === 0 ? "not-allowed" : "pointer",
+            opacity: repoCount === 0 ? 0.4 : 1,
+            transition: "all 150ms ease",
+          }}
+          onMouseEnter={(e) => {
+            if (!isGcRunning && !isSyncing && repoCount > 0) {
+              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.1)";
+              (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+            }
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+            (e.currentTarget as HTMLButtonElement).style.color = "#b3b3b3";
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {isGcRunning ? "Running GC…" : "GC & Prune"}
+        </button>
+
         {/* Fetch All */}
         <button
           onClick={handleFetchAll}
@@ -363,7 +427,7 @@ export function BottomBar() {
             padding: "7px 16px",
             background: "rgba(255,255,255,0.06)",
             color: isFetching ? "#6a6a6a" : "#b3b3b3",
-            border: "1px solid rgba(255,255,255,0.1)",
+            border: "1px solid var(--color-border)",
             borderRadius: "20px",
             fontSize: "12px",
             fontWeight: 600,
