@@ -322,37 +322,20 @@ async fn handle_tool_call(name: &str, args: &Value) -> Result<Value, String> {
 
         "push" => {
             let path = args["path"].as_str().ok_or("Missing 'path'")?;
-            // Try libgit2 first, fall back to CLI
-            match git_engine::push_repo(path.to_string()).await {
-                Ok(msg) => Ok(json!({ "message": msg })),
-                Err(_) => {
-                    let msg = git_engine::push_cli(path.to_string())
-                        .await
-                        .map_err(|e| e.to_string())?;
-                    Ok(json!({ "message": msg }))
-                }
-            }
+            let message = args["message"].as_str().unwrap_or("").to_string();
+            let msg = git_engine::push_repo(path.to_string(), message)
+                .await
+                .map_err(|e| e.to_string())?;
+            Ok(json!({ "message": msg }))
         }
 
         "pull" => {
             let path = args["path"].as_str().ok_or("Missing 'path'")?;
             let rebase = args["rebase"].as_bool().unwrap_or(false);
-            if rebase {
-                let msg = git_engine::pull_cli(path.to_string(), true)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                Ok(json!({ "message": msg }))
-            } else {
-                match git_engine::pull_repo(path.to_string()).await {
-                    Ok(msg) => Ok(json!({ "message": msg })),
-                    Err(_) => {
-                        let msg = git_engine::pull_cli(path.to_string(), false)
-                            .await
-                            .map_err(|e| e.to_string())?;
-                        Ok(json!({ "message": msg }))
-                    }
-                }
-            }
+            let msg = git_engine::git_pull(path, rebase)
+                .await
+                .map_err(|e| e.to_string())?;
+            Ok(json!({ "message": msg }))
         }
 
         "get_branches" => {

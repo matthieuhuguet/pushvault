@@ -28,30 +28,30 @@ pub async fn fetch_repo(path: String) -> Result<String, String> {
 
 #[tauri::command]
 pub async fn pull_repo(path: String) -> Result<String, String> {
-    match git_engine::pull_repo(path.clone()).await {
-        Ok(msg) => Ok(msg),
-        Err(_) => {
-            // Fall back to git CLI (handles credential managers libgit2 can't)
-            git_engine::pull_cli(path, false)
-                .await
-                .map_err(|e| e.to_string())
-        }
-    }
+    git_engine::pull_repo(path)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-/// Push the current branch to its remote (no staging, no commit).
-/// Falls back to git CLI if libgit2 auth fails.
+/// Save operation: stage all → commit (if changes) → push via git CLI.
+/// This is the core "save my work" function.
 #[tauri::command]
-pub async fn push_repo(path: String) -> Result<String, String> {
-    match git_engine::push_repo(path.clone()).await {
-        Ok(msg) => Ok(msg),
-        Err(_) => {
-            // Fall back to git CLI (handles Windows Credential Manager, etc.)
-            git_engine::push_cli(path)
-                .await
-                .map_err(|e| e.to_string())
-        }
-    }
+pub async fn push_repo(
+    path: String,
+    message: String,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let max_size_mb = {
+        let cfg = state.config.read().await;
+        cfg.max_file_size_mb
+    };
+
+    // Pre-process large files
+    let _ = chunk_engine::preprocess_large_files(&path, max_size_mb).await;
+
+    git_engine::push_repo(path, message)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Force push the current branch (with + refspec).

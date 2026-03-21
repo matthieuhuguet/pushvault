@@ -30,6 +30,7 @@ use crate::models::{
 // Credentials helper
 // ---------------------------------------------------------------------------
 
+#[allow(dead_code)]
 fn make_callbacks<'a>() -> git2::RemoteCallbacks<'a> {
     let mut callbacks = git2::RemoteCallbacks::new();
     callbacks.credentials(|url, username_from_url, allowed_types| {
@@ -258,76 +259,14 @@ pub async fn get_repo_status(repo_path: String) -> Result<RepoStatus, PvError> {
 }
 
 pub async fn fetch_repo(repo_path: String) -> Result<String, PvError> {
-    tokio::task::spawn_blocking(move || {
-        let repo = Repository::open(&repo_path)
-            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
-
-        let remote_name = get_default_remote(&repo);
-        let mut remote = repo.find_remote(&remote_name)?;
-
-        let mut fo = git2::FetchOptions::new();
-        fo.remote_callbacks(make_callbacks());
-        fo.download_tags(git2::AutotagOption::Unspecified);
-        fo.prune(git2::FetchPrune::On);
-
-        remote.fetch(&[] as &[&str], Some(&mut fo), None)?;
-        Ok(format!("Fetched from {}", remote_name))
-    })
-    .await
-    .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+    git_fetch(&repo_path).await
 }
 
 pub async fn pull_repo(repo_path: String) -> Result<String, PvError> {
-    tokio::task::spawn_blocking(move || {
-        let repo = Repository::open(&repo_path)
-            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
-
-        let remote_name = get_default_remote(&repo);
-        let mut remote = repo.find_remote(&remote_name)?;
-
-        // Fetch first
-        let mut fo = git2::FetchOptions::new();
-        fo.remote_callbacks(make_callbacks());
-        remote.fetch(&[] as &[&str], Some(&mut fo), None)?;
-
-        // Find upstream
-        let head = repo.head()?;
-        let branch_name = head
-            .shorthand()
-            .unwrap_or("HEAD")
-            .to_string();
-
-        let fetch_head = repo.find_reference("FETCH_HEAD")?;
-        let fetch_commit = repo.reference_to_annotated_commit(&fetch_head)?;
-
-        // Merge analysis
-        let (analysis, _) = repo.merge_analysis(&[&fetch_commit])?;
-
-        if analysis.is_up_to_date() {
-            return Ok("Already up to date".into());
-        }
-
-        if analysis.is_fast_forward() {
-            let refname = format!("refs/heads/{}", branch_name);
-            let mut reference = repo.find_reference(&refname)?;
-            reference.set_target(fetch_commit.id(), "Fast-forward pull")?;
-            repo.set_head(&refname)?;
-            repo.checkout_head(Some(git2::build::CheckoutBuilder::default().force()))?;
-            return Ok("Fast-forward pull successful".into());
-        }
-
-        if analysis.is_normal() {
-            let head_commit = repo.reference_to_annotated_commit(&repo.head()?)?;
-            normal_merge(&repo, &head_commit, &fetch_commit)?;
-            return Ok("Merge pull successful".into());
-        }
-
-        Err(PvError::Git(git2::Error::from_str("Pull failed: unresolvable merge")))
-    })
-    .await
-    .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+    git_pull(&repo_path, false).await
 }
 
+#[allow(dead_code)]
 fn normal_merge(
     repo: &Repository,
     local: &git2::AnnotatedCommit,
@@ -363,60 +302,132 @@ fn normal_merge(
     Ok(())
 }
 
-/// Push the current branch to its remote. Does NOT stage or commit.
-pub async fn push_repo(repo_path: String) -> Result<String, PvError> {
-    push_to_remote(repo_path).await
+// =========================================================================
+// ALL REMOTE OPS USE GIT CLI — libgit2 has auth issues on Windows.
+// This is the ONLY correct approach for push/pull/fetch.
+// =========================================================================
+
+/// The main "save" operation: stage all → commit (if needed) → push.
+/// This is what the user expects when clicking Push.
+pub async fn push_repo(repo_path: String, message: String) -> Result<String, PvError> {
+    let rp = repo_path.clone();
+
+    // 1. Stage all changes
+    stage_all(rp.clone()).await?;
+
+    // 2. Check if there's anything to commit
+    let has_staged = tokio::task::spawn_blocking({
+        let rp2 = rp.clone();
+        move || {
+            let output = git_cmd()
+                .args(["diff", "--cached", "--quiet"])
+                .current_dir(&rp2)
+                .output();
+            match output {
+                Ok(o) => !o.status.success(), // exit code 1 = there are diffs
+                Err(_) => false,
+            }
+        }
+    })
+    .await
+    .unwrap_or(false);
+
+    if has_staged {
+        let msg = if message.is_empty() {
+            format!("chore: save via PushVault — {}", chrono::Local::now().format("%Y-%m-%d %H:%M"))
+        } else {
+            message
+        };
+        commit(rp.clone(), msg, false).await?;
+    }
+
+    // 3. Push via git CLI
+    git_push(&rp).await
 }
 
-/// Push using git CLI subprocess as fallback (handles credential managers
-/// that libgit2 can't talk to, e.g. Git Credential Manager on Windows).
-pub async fn push_cli(repo_path: String) -> Result<String, PvError> {
+/// Push via git CLI (the ONLY reliable way on Windows).
+pub async fn git_push(repo_path: &str) -> Result<String, PvError> {
+    let rp = repo_path.to_string();
     tokio::task::spawn_blocking(move || {
         let output = git_cmd()
             .args(["push"])
-            .current_dir(&repo_path)
+            .current_dir(&rp)
             .output()
             .map_err(PvError::Io)?;
+
+        // git push writes progress to stderr even on success
+        let out = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+
         if output.status.success() {
-            let out = String::from_utf8_lossy(&output.stdout).to_string();
-            let err = String::from_utf8_lossy(&output.stderr).to_string();
-            Ok(format!("{}{}", out.trim(), err.trim()))
+            if err.contains("Everything up-to-date") {
+                Ok("Already up to date".into())
+            } else {
+                Ok(if out.is_empty() { err } else { out })
+            }
         } else {
-            Err(PvError::Config(
-                String::from_utf8_lossy(&output.stderr).trim().to_string(),
-            ))
+            // Provide a clear error message
+            let msg = if !err.is_empty() { err } else { out };
+            Err(PvError::Config(format!("Push failed: {}", msg)))
         }
     })
     .await
     .map_err(|e| PvError::Config(e.to_string()))?
 }
 
-/// Pull using git CLI subprocess (handles rebase, credential managers).
-pub async fn pull_cli(repo_path: String, rebase: bool) -> Result<String, PvError> {
+/// Pull via git CLI.
+pub async fn git_pull(repo_path: &str, rebase: bool) -> Result<String, PvError> {
+    let rp = repo_path.to_string();
     tokio::task::spawn_blocking(move || {
-        let mut args = vec!["pull".to_string()];
+        let mut args = vec!["pull"];
         if rebase {
-            args.push("--rebase".into());
+            args.push("--rebase");
         }
         let output = git_cmd()
             .args(&args)
-            .current_dir(&repo_path)
+            .current_dir(&rp)
             .output()
             .map_err(PvError::Io)?;
+
+        let out = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+
         if output.status.success() {
-            let out = String::from_utf8_lossy(&output.stdout).to_string();
-            Ok(out.trim().to_string())
+            Ok(if out.is_empty() { "Pulled successfully".into() } else { out })
         } else {
-            Err(PvError::Config(
-                String::from_utf8_lossy(&output.stderr).trim().to_string(),
-            ))
+            let msg = if !err.is_empty() { err } else { out };
+            Err(PvError::Config(format!("Pull failed: {}", msg)))
         }
     })
     .await
     .map_err(|e| PvError::Config(e.to_string()))?
 }
 
-/// Force push with --force-with-lease (safer than raw force push).
+/// Fetch via git CLI.
+pub async fn git_fetch(repo_path: &str) -> Result<String, PvError> {
+    let rp = repo_path.to_string();
+    tokio::task::spawn_blocking(move || {
+        let output = git_cmd()
+            .args(["fetch", "--prune"])
+            .current_dir(&rp)
+            .output()
+            .map_err(PvError::Io)?;
+
+        let out = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+
+        if output.status.success() {
+            Ok(if out.is_empty() && err.is_empty() { "Fetched".into() } else if out.is_empty() { err } else { out })
+        } else {
+            let msg = if !err.is_empty() { err } else { out };
+            Err(PvError::Config(format!("Fetch failed: {}", msg)))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Force push with --force-with-lease via git CLI.
 pub async fn force_push_with_lease(repo_path: String) -> Result<String, PvError> {
     tokio::task::spawn_blocking(move || {
         let output = git_cmd()
@@ -424,20 +435,28 @@ pub async fn force_push_with_lease(repo_path: String) -> Result<String, PvError>
             .current_dir(&repo_path)
             .output()
             .map_err(PvError::Io)?;
+
+        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
         if output.status.success() {
-            let out = String::from_utf8_lossy(&output.stdout).to_string();
-            let err = String::from_utf8_lossy(&output.stderr).to_string();
-            Ok(format!("Force push (with lease) succeeded. {}{}", out.trim(), err.trim()))
+            Ok(format!("Force push (with lease) succeeded. {}", err))
         } else {
-            Err(PvError::Config(
-                String::from_utf8_lossy(&output.stderr).trim().to_string(),
-            ))
+            Err(PvError::Config(format!("Force push failed: {}", err)))
         }
     })
     .await
     .map_err(|e| PvError::Config(e.to_string()))?
 }
 
+// Keep old pull_cli/push_cli as aliases for compat
+pub async fn pull_cli(repo_path: String, rebase: bool) -> Result<String, PvError> {
+    git_pull(&repo_path, rebase).await
+}
+#[allow(dead_code)]
+pub async fn push_cli(repo_path: String) -> Result<String, PvError> {
+    git_push(&repo_path).await
+}
+
+#[allow(dead_code)]
 async fn push_to_remote(repo_path: String) -> Result<String, PvError> {
     tokio::task::spawn_blocking(move || {
         let repo = Repository::open(&repo_path)
@@ -460,30 +479,24 @@ async fn push_to_remote(repo_path: String) -> Result<String, PvError> {
     .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
 }
 
-/// Force push the current branch. Returns a description of what happened.
+/// Force push the current branch via git CLI.
 pub async fn force_push(repo_path: String) -> Result<String, PvError> {
     tokio::task::spawn_blocking(move || {
-        let repo = Repository::open(&repo_path)
-            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+        let output = git_cmd()
+            .args(["push", "--force"])
+            .current_dir(&repo_path)
+            .output()
+            .map_err(PvError::Io)?;
 
-        let remote_name = get_default_remote(&repo);
-        let mut remote = repo.find_remote(&remote_name)?;
-
-        let head = repo.head()?;
-        let branch = head.shorthand().unwrap_or("main").to_string();
-        let refspec = format!("+refs/heads/{}:refs/heads/{}", branch, branch);
-
-        let mut po = git2::PushOptions::new();
-        po.remote_callbacks(make_callbacks());
-        remote.push(&[&refspec], Some(&mut po))?;
-
-        Ok(format!(
-            "Force pushed branch '{}' to '{}'",
-            branch, remote_name
-        ))
+        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        if output.status.success() {
+            Ok(format!("Force pushed. {}", err))
+        } else {
+            Err(PvError::Config(format!("Force push failed: {}", err)))
+        }
     })
     .await
-    .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+    .map_err(|e| PvError::Config(e.to_string()))?
 }
 
 pub async fn sync_repo(repo_path: String, message: String) -> Result<SyncResult, PvError> {
@@ -493,90 +506,40 @@ pub async fn sync_repo(repo_path: String, message: String) -> Result<SyncResult,
     let mut pulled = false;
     let mut messages: Vec<String> = Vec::new();
 
-    // Step 1: If there are uncommitted changes, stage & commit them
+    // Step 1: Stage + commit if there are local changes
     let has_local_changes = status.staged > 0 || status.modified > 0 || status.untracked > 0;
     if has_local_changes {
         let commit_msg = if message.is_empty() {
-            "chore: sync via PushVault".to_string()
+            format!("chore: sync via PushVault — {}", chrono::Local::now().format("%Y-%m-%d %H:%M"))
         } else {
             message.clone()
         };
-        // Stage all + commit
         if let Err(e) = stage_all(repo_path.clone()).await {
-            return Ok(SyncResult {
-                path: repo_path,
-                success: false,
-                message: format!("Stage failed: {}", e),
-                pushed: false,
-                pulled: false,
-            });
+            return Ok(SyncResult { path: repo_path, success: false, message: format!("Stage failed: {}", e), pushed: false, pulled: false });
         }
         if let Err(e) = commit(repo_path.clone(), commit_msg, false).await {
-            return Ok(SyncResult {
-                path: repo_path,
-                success: false,
-                message: format!("Commit failed: {}", e),
-                pushed: false,
-                pulled: false,
-            });
+            return Ok(SyncResult { path: repo_path, success: false, message: format!("Commit failed: {}", e), pushed: false, pulled: false });
         }
         messages.push("Committed local changes".into());
     }
 
-    // Step 2: Pull if behind (try libgit2 first, fall back to CLI)
+    // Step 2: Pull if behind
     if status.behind > 0 {
-        match pull_repo(repo_path.clone()).await {
-            Ok(msg) => {
-                pulled = true;
-                messages.push(msg);
-            }
-            Err(_) => {
-                // Fall back to git CLI pull
-                match pull_cli(repo_path.clone(), false).await {
-                    Ok(msg) => {
-                        pulled = true;
-                        messages.push(format!("Pulled (CLI): {}", msg));
-                    }
-                    Err(e) => {
-                        return Ok(SyncResult {
-                            path: repo_path,
-                            success: false,
-                            message: format!("Pull failed: {}", e),
-                            pushed: false,
-                            pulled: false,
-                        });
-                    }
-                }
+        match git_pull(&repo_path, false).await {
+            Ok(msg) => { pulled = true; messages.push(msg); }
+            Err(e) => {
+                return Ok(SyncResult { path: repo_path, success: false, message: format!("Pull failed: {}", e), pushed: false, pulled: false });
             }
         }
     }
 
-    // Step 3: Push if ahead or we just committed
-    // Re-check status after pull to get accurate ahead count
+    // Step 3: Push
     let post_status = get_repo_status(repo_path.clone()).await?;
     if post_status.ahead > 0 || has_local_changes {
-        match push_to_remote(repo_path.clone()).await {
-            Ok(msg) => {
-                pushed = true;
-                messages.push(msg);
-            }
-            Err(_) => {
-                // Fall back to git CLI push
-                match push_cli(repo_path.clone()).await {
-                    Ok(msg) => {
-                        pushed = true;
-                        messages.push(format!("Pushed (CLI): {}", msg));
-                    }
-                    Err(e) => {
-                        return Ok(SyncResult {
-                            path: repo_path,
-                            success: false,
-                            message: format!("Push failed: {}", e),
-                            pushed: false,
-                            pulled,
-                        });
-                    }
-                }
+        match git_push(&repo_path).await {
+            Ok(msg) => { pushed = true; messages.push(msg); }
+            Err(e) => {
+                return Ok(SyncResult { path: repo_path, success: false, message: format!("Push failed: {}", e), pushed: false, pulled });
             }
         }
     }
@@ -585,13 +548,7 @@ pub async fn sync_repo(repo_path: String, message: String) -> Result<SyncResult,
         messages.push("Already up to date".into());
     }
 
-    Ok(SyncResult {
-        path: repo_path,
-        success: true,
-        message: messages.join("; "),
-        pushed,
-        pulled,
-    })
+    Ok(SyncResult { path: repo_path, success: true, message: messages.join("; "), pushed, pulled })
 }
 
 /// Convert git2 Delta status to lowercase string matching what the frontend expects.
@@ -1196,20 +1153,24 @@ pub async fn drop_stash(repo_path: String, index: usize) -> Result<(), PvError> 
 
 pub async fn clone_repo(url: String, dest_path: String) -> Result<String, PvError> {
     tokio::task::spawn_blocking(move || {
-        let mut builder = git2::build::RepoBuilder::new();
-        let mut fo = git2::FetchOptions::new();
-        fo.remote_callbacks(make_callbacks());
-        builder.fetch_options(fo);
-        let repo = builder.clone(&url, Path::new(&dest_path))?;
-        let name = repo
-            .workdir()
-            .and_then(|p| p.file_name())
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| dest_path.clone());
-        Ok(format!("Cloned '{}' to '{}'", name, dest_path))
+        let output = git_cmd()
+            .args(["clone", &url, &dest_path])
+            .output()
+            .map_err(PvError::Io)?;
+
+        if output.status.success() {
+            let name = Path::new(&dest_path)
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| dest_path.clone());
+            Ok(format!("Cloned '{}' to '{}'", name, dest_path))
+        } else {
+            let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            Err(PvError::Config(format!("Clone failed: {}", err)))
+        }
     })
     .await
-    .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+    .map_err(|e| PvError::Config(e.to_string()))?
 }
 
 // ---------------------------------------------------------------------------

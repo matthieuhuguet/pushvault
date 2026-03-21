@@ -26,8 +26,8 @@ export const ipc = {
   pullRepo: (path: string) =>
     invoke<string>("pull_repo", { path }),
 
-  pushRepo: (path: string) =>
-    invoke<string>("push_repo", { path }),
+  pushRepo: (path: string, message = "") =>
+    invoke<string>("push_repo", { path, message }),
 
   forcePush: (path: string) =>
     invoke<string>("force_push", { path }),
