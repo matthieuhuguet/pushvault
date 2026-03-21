@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Virtuoso } from "react-virtuoso";
 import { ipc } from "../../lib/ipc";
 import { useToastStore } from "../../store/toastStore";
@@ -6,6 +6,8 @@ import { useActivityStore } from "../../store/activityStore";
 import { useConfirmStore } from "../../store/confirmStore";
 import { usePromptStore } from "../../store/promptStore";
 import { DiffViewer } from "../Diff/DiffViewer";
+import { ReflogPanel } from "../ReflogPanel/ReflogPanel";
+import { computeGraphLanes, getLaneColor, type GraphNode } from "../../lib/commitGraph";
 import type { CommitInfo, DiffResult } from "../../types";
 
 interface CommitHistoryProps {
@@ -96,19 +98,19 @@ function CommitContextMenu({ x, y, commit, repoPath, onClose, onRefresh }: Commi
         border: "none",
         cursor: "pointer",
         fontSize: "13px",
-        color: danger ? "#e5534b" : "#b3b3b3",
+        color: danger ? "var(--color-error)" : "var(--color-text-secondary)",
         textAlign: "left",
         transition: "background 100ms ease, color 100ms ease",
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = danger
-          ? "rgba(229,83,75,0.1)"
+          ? "var(--color-error-dim)"
           : "var(--overlay-light)";
-        (e.currentTarget as HTMLButtonElement).style.color = danger ? "#e5534b" : "#fff";
+        (e.currentTarget as HTMLButtonElement).style.color = danger ? "var(--color-error)" : "var(--color-text-primary)";
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = "none";
-        (e.currentTarget as HTMLButtonElement).style.color = danger ? "#e5534b" : "#b3b3b3";
+        (e.currentTarget as HTMLButtonElement).style.color = danger ? "var(--color-error)" : "var(--color-text-secondary)";
       }}
     >
       <span style={{ fontSize: "14px", width: "16px", textAlign: "center", flexShrink: 0 }}>{icon}</span>
@@ -239,7 +241,7 @@ function CommitContextMenu({ x, y, commit, repoPath, onClose, onRefresh }: Commi
         <div style={{
           fontFamily: "monospace",
           fontSize: "11px",
-          color: "#3d9be9",
+          color: "var(--color-info)",
           marginBottom: "2px",
         }}>
           {commit.short_hash}
@@ -289,6 +291,9 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
   const [searchQuery, setSearchQuery] = useState("");
   const [focusedIdx, setFocusedIdx] = useState(0);
 
+  const [showGraph, setShowGraph] = useState(true);
+  const [showReflog, setShowReflog] = useState(false);
+
   const filteredCommits = searchQuery.trim()
     ? commits.filter(
         (c) =>
@@ -297,6 +302,12 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
           c.author.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : commits;
+
+  // Compute graph lanes (only when not filtering — graph requires full commit chain)
+  const graphNodes = useMemo(
+    () => (showGraph && !searchQuery.trim() ? computeGraphLanes(filteredCommits) : []),
+    [filteredCommits, showGraph, searchQuery]
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -392,20 +403,20 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
       style={{
         position: "fixed",
         inset: 0,
-        background: "var(--overlay-backdrop)",
-        backdropFilter: "blur(6px)",
+        background: "var(--color-bg-primary)",
+        backdropFilter: "blur(24px) saturate(1.5)",
+        WebkitBackdropFilter: "blur(24px) saturate(1.5)",
         zIndex: 600,
         display: "flex",
         flexDirection: "column",
-        animation: "fade-in 150ms ease both",
       }}
     >
       {/* Header */}
       <div
         style={{
-          height: "56px",
+          height: "52px",
           background: "var(--color-bg-card)",
-          borderBottom: "1px solid var(--color-border)",
+          borderBottom: "1px solid var(--color-border-subtle)",
           display: "flex",
           alignItems: "center",
           padding: "0 20px",
@@ -414,8 +425,8 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
         }}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9" stroke="#1DB954" strokeWidth="2" />
-          <polyline points="12 7 12 12 15 15" stroke="#1DB954" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="12" cy="12" r="9" stroke="var(--color-accent)" strokeWidth="2" />
+          <polyline points="12 7 12 12 15 15" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <h2 style={{ fontSize: "15px", fontWeight: 700, color: "var(--color-text-primary)", flexShrink: 0 }}>
           {repoName ?? "Repo"}
@@ -448,7 +459,7 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
               outline: "none",
               boxSizing: "border-box",
             }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.4)")}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-accent-border)")}
             onBlur={(e) => (e.currentTarget.style.borderColor = "var(--overlay-light)")}
           />
           {searchQuery && (
@@ -457,6 +468,63 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
             </span>
           )}
         </div>
+
+        {/* Graph toggle */}
+        <button
+          title={showGraph ? "Hide graph" : "Show graph"}
+          onClick={() => setShowGraph((v) => !v)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+            padding: "5px 10px",
+            background: showGraph ? "var(--color-accent-dim)" : "var(--overlay-subtle)",
+            border: `1px solid ${showGraph ? "var(--color-accent-border)" : "var(--color-border)"}`,
+            borderRadius: "20px",
+            color: showGraph ? "var(--color-accent)" : "var(--color-text-secondary)",
+            fontSize: "11px",
+            fontWeight: 600,
+            cursor: "pointer",
+            flexShrink: 0,
+            transition: "all 120ms ease",
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <circle cx="6" cy="6" r="2.5" stroke="currentColor" strokeWidth="2" />
+            <circle cx="18" cy="10" r="2.5" stroke="currentColor" strokeWidth="2" />
+            <circle cx="6" cy="18" r="2.5" stroke="currentColor" strokeWidth="2" />
+            <path d="M6 8.5v7M8.5 6h7l-9.5 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          Graph
+        </button>
+
+        {/* Reflog toggle */}
+        <button
+          title={showReflog ? "Hide reflog" : "Show reflog"}
+          onClick={() => setShowReflog((v) => !v)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+            padding: "5px 10px",
+            background: showReflog ? "var(--color-warning-dim)" : "var(--overlay-subtle)",
+            border: `1px solid ${showReflog ? "var(--color-warning-border)" : "var(--color-border)"}`,
+            borderRadius: "20px",
+            color: showReflog ? "var(--color-warning)" : "var(--color-text-secondary)",
+            fontSize: "11px",
+            fontWeight: 600,
+            cursor: "pointer",
+            flexShrink: 0,
+            transition: "all 120ms ease",
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <path d="M3 12a9 9 0 1 0 9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M3 3v6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          Reflog
+        </button>
 
         {/* View on GitHub + New PR buttons */}
         {gitHubBase && (
@@ -516,9 +584,9 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                 height: "32px",
                 padding: "0 14px",
                 borderRadius: "16px",
-                background: "rgba(29,185,84,0.1)",
-                border: "1px solid rgba(29,185,84,0.25)",
-                color: "#1DB954",
+                background: "var(--color-success-dim)",
+                border: "1px solid var(--color-success-border)",
+                color: "var(--color-accent)",
                 cursor: "pointer",
                 fontSize: "12px",
                 fontWeight: 600,
@@ -528,12 +596,12 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                 transition: "all 150ms ease",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(29,185,84,0.2)";
-                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(29,185,84,0.5)";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--color-accent-dim)";
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--color-accent-border)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(29,185,84,0.1)";
-                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(29,185,84,0.25)";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--color-success-dim)";
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--color-success-border)";
               }}
             >
               {/* PR icon (merge) */}
@@ -606,8 +674,8 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 0.8s linear infinite" }}>
-                <circle cx="12" cy="12" r="10" stroke="#333" strokeWidth="3" />
-                <path d="M12 2a10 10 0 0 1 10 10" stroke="#1DB954" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="12" cy="12" r="10" stroke="var(--overlay-medium)" strokeWidth="3" />
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="var(--color-accent)" strokeWidth="3" strokeLinecap="round" />
               </svg>
               Loading history…
             </div>
@@ -626,8 +694,8 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                 fill="none"
                 style={{ display: "block", margin: "0 auto 16px", opacity: 0.3 }}
               >
-                <circle cx="12" cy="12" r="9" stroke="#b3b3b3" strokeWidth="2" />
-                <polyline points="12 7 12 12 15 15" stroke="#b3b3b3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="12" r="9" stroke="var(--color-text-secondary)" strokeWidth="2" />
+                <polyline points="12 7 12 12 15 15" stroke="var(--color-text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "6px" }}>
                 No commits yet
@@ -648,49 +716,118 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
               itemContent={(idx, commit) => {
                 const isExpanded = expandedHash === commit.hash;
                 const isFocused = idx === focusedIdx;
+                const gn = graphNodes[idx];
+                const hasGraph = showGraph && gn && !searchQuery.trim();
+                const LANE_W = 16;
+                const graphWidth = hasGraph ? Math.max((gn.maxLane + 2) * LANE_W, 40) : 40;
                 return (
                   <div
                     style={{
                       position: "relative",
-                      paddingLeft: "40px",
+                      paddingLeft: `${graphWidth}px`,
                       animation: "fade-in 200ms ease both",
-                      outline: isFocused ? "1px solid rgba(61,155,233,0.35)" : "none",
+                      outline: isFocused ? "1px solid var(--color-info-border)" : "none",
                       outlineOffset: "-1px",
                       borderRadius: "4px",
                     }}
                   >
-                    {/* Timeline line */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: "18px",
-                        top: "28px",
-                        height: "100%",
-                        width: "1px",
-                        background: "var(--overlay-light)",
-                      }}
-                    />
-
-                    {/* Timeline dot */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: "13px",
-                        top: "16px",
-                        width: "11px",
-                        height: "11px",
-                        borderRadius: "50%",
-                        background: isExpanded ? "#1DB954" : isFocused ? "#3d9be9" : "#282828",
-                        border: `2px solid ${isExpanded ? "#1DB954" : isFocused ? "#3d9be9" : "var(--overlay-strong)"}`,
-                        transition: "all 150ms ease",
-                        zIndex: 1,
-                        boxShadow: isExpanded
-                          ? "0 0 8px rgba(29,185,84,0.6)"
-                          : isFocused
-                          ? "0 0 6px rgba(61,155,233,0.5)"
-                          : "none",
-                      }}
-                    />
+                    {hasGraph ? (
+                      /* Graph SVG lanes */
+                      <svg
+                        width={graphWidth}
+                        height="100%"
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          height: "100%",
+                          overflow: "visible",
+                        }}
+                      >
+                        {/* Connection lines going down */}
+                        {gn.connectionsDown.map((conn, ci) => {
+                          const x1 = conn.fromLane * LANE_W + LANE_W / 2 + 4;
+                          const x2 = conn.toLane * LANE_W + LANE_W / 2 + 4;
+                          const lineColor = getLaneColor(conn.toLane);
+                          return conn.fromLane === conn.toLane ? (
+                            <line
+                              key={ci}
+                              x1={x1} y1="0" x2={x2} y2="100%"
+                              stroke={lineColor}
+                              strokeWidth="1.5"
+                              strokeOpacity="0.6"
+                            />
+                          ) : (
+                            <path
+                              key={ci}
+                              d={`M${x1},20 C${x1},36 ${x2},36 ${x2},52`}
+                              stroke={lineColor}
+                              strokeWidth="1.5"
+                              strokeOpacity="0.6"
+                              fill="none"
+                            />
+                          );
+                        })}
+                        {/* Commit node */}
+                        {gn.isMerge ? (
+                          /* Merge: diamond */
+                          <g transform={`translate(${gn.lane * LANE_W + LANE_W / 2 + 4}, 20)`}>
+                            <rect
+                              x="-5" y="-5" width="10" height="10"
+                              rx="2"
+                              transform="rotate(45)"
+                              fill={isExpanded ? "var(--color-accent)" : getLaneColor(gn.lane)}
+                              stroke={isExpanded ? "var(--color-accent)" : "var(--color-bg-card)"}
+                              strokeWidth="1.5"
+                            />
+                          </g>
+                        ) : (
+                          /* Normal: circle */
+                          <circle
+                            cx={gn.lane * LANE_W + LANE_W / 2 + 4}
+                            cy={20}
+                            r={isExpanded ? 5 : 4}
+                            fill={isExpanded ? "var(--color-accent)" : getLaneColor(gn.lane)}
+                            stroke={isExpanded ? "var(--color-accent)" : "var(--color-bg-card)"}
+                            strokeWidth="1.5"
+                          />
+                        )}
+                      </svg>
+                    ) : (
+                      <>
+                        {/* Simple timeline line */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: "18px",
+                            top: "28px",
+                            height: "100%",
+                            width: "1px",
+                            background: "var(--overlay-light)",
+                          }}
+                        />
+                        {/* Simple timeline dot */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: "13px",
+                            top: "16px",
+                            width: "11px",
+                            height: "11px",
+                            borderRadius: "50%",
+                            background: isExpanded ? "var(--color-accent)" : isFocused ? "var(--color-info)" : "var(--color-bg-elevated)",
+                            border: `2px solid ${isExpanded ? "var(--color-accent)" : isFocused ? "var(--color-info)" : "var(--overlay-strong)"}`,
+                            transition: "all 150ms ease",
+                            zIndex: 1,
+                            boxShadow: isExpanded
+                              ? "0 0 8px var(--color-accent-border)"
+                              : isFocused
+                              ? "0 0 6px var(--color-info-border)"
+                              : "none",
+                          }}
+                        />
+                      </>
+                    )}
 
                     {/* Commit row */}
                     <div
@@ -700,14 +837,14 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                         padding: "12px 20px 12px 4px",
                         cursor: "pointer",
                         borderLeft: isExpanded
-                          ? "2px solid #1DB954"
+                          ? "2px solid var(--color-accent)"
                           : isFocused
-                          ? "2px solid rgba(61,155,233,0.5)"
+                          ? "2px solid var(--color-info-border)"
                           : "2px solid transparent",
                         background: isExpanded
-                          ? "rgba(29,185,84,0.06)"
+                          ? "var(--color-accent-dim)"
                           : isFocused
-                          ? "rgba(61,155,233,0.04)"
+                          ? "var(--color-info-dim)"
                           : "transparent",
                         transition: "background 120ms ease, border-color 120ms ease",
                         userSelect: "none",
@@ -757,16 +894,16 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                           style={{
                             fontFamily: '"Cascadia Code", "Fira Code", monospace',
                             fontSize: "10px",
-                            color: "#3d9be9",
-                            background: "rgba(61,155,233,0.1)",
-                            border: "1px solid rgba(61,155,233,0.2)",
+                            color: "var(--color-info)",
+                            background: "var(--color-info-dim)",
+                            border: "1px solid var(--color-info-border)",
                             borderRadius: "6px",
                             padding: "1px 7px",
                             cursor: "pointer",
                             transition: "background 100ms ease",
                           }}
-                          onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(61,155,233,0.2)")}
-                          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(61,155,233,0.1)")}
+                          onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--color-info-border)")}
+                          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--color-info-dim)")}
                         >
                           {commit.short_hash}
                         </button>
@@ -777,12 +914,12 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                           </span>
                         )}
                         {commit.insertions > 0 && (
-                          <span style={{ fontSize: "11px", color: "#1DB954", fontWeight: 600 }}>
+                          <span style={{ fontSize: "11px", color: "var(--color-success)", fontWeight: 600 }}>
                             +{commit.insertions}
                           </span>
                         )}
                         {commit.deletions > 0 && (
-                          <span style={{ fontSize: "11px", color: "#e5534b", fontWeight: 600 }}>
+                          <span style={{ fontSize: "11px", color: "var(--color-error)", fontWeight: 600 }}>
                             -{commit.deletions}
                           </span>
                         )}
@@ -801,7 +938,7 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
                               lineHeight: 1,
                             }}
                             onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)")}
-                            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#535353")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-disabled)")}
                           >
                             ↗
                           </button>
@@ -815,8 +952,34 @@ export function CommitHistory({ repoPath, onClose, repoName }: CommitHistoryProp
           )}
         </div>
 
+        {/* Reflog panel (replaces diff when active) */}
+        {showReflog && (
+          <div style={{ flex: 1, overflow: "hidden", minHeight: 200 }}>
+            <ReflogPanel
+              repoPath={repoPath}
+              onClose={() => setShowReflog(false)}
+              onCheckout={async (hash) => {
+                const ok = await useConfirmStore.getState().request({
+                  title: "Reset to this commit?",
+                  description: `Reset HEAD to ${hash.slice(0, 8)}? This moves HEAD but keeps your working directory (mixed reset).`,
+                  danger: true,
+                  confirmLabel: "Reset",
+                });
+                if (!ok) return;
+                try {
+                  await ipc.resetRepo(repoPath, hash, "mixed");
+                  addToast("success", `Reset to ${hash.slice(0, 8)}`);
+                  load();
+                } catch (e) {
+                  addToast("error", `Reset failed: ${e}`);
+                }
+              }}
+            />
+          </div>
+        )}
+
         {/* Diff panel */}
-        {expandedHash && (
+        {!showReflog && expandedHash && (
           <div style={{ flex: 1, overflow: "hidden" }}>
             <DiffViewer diff={diff} loading={diffLoading} repoPath={repoPath} />
           </div>

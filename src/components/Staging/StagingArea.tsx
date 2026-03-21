@@ -6,18 +6,19 @@ import { useToastStore } from "../../store/toastStore";
 import { useActivityStore } from "../../store/activityStore";
 import { useConfirmStore } from "../../store/confirmStore";
 import { DiffViewer } from "../Diff/DiffViewer";
+import { BlameViewer } from "../BlameViewer/BlameViewer";
 import { CommitInput } from "../CommitInput/CommitInput";
 import type { DiffResult, FileEntry } from "../../types";
 
 /* ── File status helpers ────────────────────────────────────── */
 function statusColor(status: string): string {
-  if (status === "M" || status === "modified") return "#3d9be9";
-  if (status === "A" || status === "added") return "#1DB954";
-  if (status === "D" || status === "deleted") return "#e5534b";
-  if (status === "?" || status === "untracked") return "#b3b3b3";
-  if (status === "C" || status === "conflict") return "#ff7b00";
-  if (status === "R" || status === "renamed") return "#f59b00";
-  return "#b3b3b3";
+  if (status === "M" || status === "modified") return "var(--color-info)";
+  if (status === "A" || status === "added") return "var(--color-success)";
+  if (status === "D" || status === "deleted") return "var(--color-error)";
+  if (status === "?" || status === "untracked") return "var(--color-text-secondary)";
+  if (status === "C" || status === "conflict") return "var(--color-conflict)";
+  if (status === "R" || status === "renamed") return "var(--color-warning)";
+  return "var(--color-text-secondary)";
 }
 
 function statusLabel(status: string): string {
@@ -34,12 +35,12 @@ function statusLabel(status: string): string {
 
 function StatusIcon({ status }: { status: string }) {
   const s = status.toLowerCase();
-  if (s.includes("added") || s.includes("new") || s === "a") return <span style={{ color: "#1DB954", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>A</span>;
-  if (s.includes("deleted") || s === "d") return <span style={{ color: "#E8525A", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>D</span>;
-  if (s.includes("modified") || s === "m") return <span style={{ color: "#4687D6", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>M</span>;
-  if (s.includes("renamed") || s === "r") return <span style={{ color: "#F5A623", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>R</span>;
-  if (s.includes("untracked") || s === "?") return <span style={{ color: "#B3B3B3", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>?</span>;
-  if (s.includes("conflict") || s === "u" || s === "!") return <span style={{ color: "#E8525A", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>!</span>;
+  if (s.includes("added") || s.includes("new") || s === "a") return <span style={{ color: "var(--color-success)", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>A</span>;
+  if (s.includes("deleted") || s === "d") return <span style={{ color: "var(--color-error)", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>D</span>;
+  if (s.includes("modified") || s === "m") return <span style={{ color: "var(--color-info)", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>M</span>;
+  if (s.includes("renamed") || s === "r") return <span style={{ color: "var(--color-warning)", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>R</span>;
+  if (s.includes("untracked") || s === "?") return <span style={{ color: "var(--color-text-secondary)", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>?</span>;
+  if (s.includes("conflict") || s === "u" || s === "!") return <span style={{ color: "var(--color-error)", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>!</span>;
   return <span style={{ color: "var(--color-text-disabled)", fontWeight: 700, fontFamily: "monospace", fontSize: "12px" }}>·</span>;
 }
 
@@ -61,10 +62,11 @@ interface FileContextMenuProps {
   onUnstage?: () => void;
   onDiscard?: () => void;
   onDelete?: () => void;
+  onBlame?: () => void;
 }
 
 function FileContextMenu({
-  x, y, file, isStaged, repoPath, onClose, onStage, onUnstage, onDiscard, onDelete,
+  x, y, file, isStaged, repoPath, onClose, onStage, onUnstage, onDiscard, onDelete, onBlame,
 }: FileContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const addToast = useToastStore((s) => s.add);
@@ -107,19 +109,19 @@ function FileContextMenu({
         border: "none",
         cursor: "pointer",
         fontSize: "13px",
-        color: danger ? "#e5534b" : "#b3b3b3",
+        color: danger ? "var(--color-error)" : "var(--color-text-secondary)",
         textAlign: "left",
         transition: "background 100ms ease, color 100ms ease",
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = danger
-          ? "rgba(229,83,75,0.1)"
+          ? "var(--color-error-dim)"
           : "var(--overlay-light)";
-        (e.currentTarget as HTMLButtonElement).style.color = danger ? "#e5534b" : "#fff";
+        (e.currentTarget as HTMLButtonElement).style.color = danger ? "var(--color-error)" : "var(--color-text-primary)";
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = "none";
-        (e.currentTarget as HTMLButtonElement).style.color = danger ? "#e5534b" : "#b3b3b3";
+        (e.currentTarget as HTMLButtonElement).style.color = danger ? "var(--color-error)" : "var(--color-text-secondary)";
       }}
     >
       {label}
@@ -200,6 +202,7 @@ function FileContextMenu({
       {menuItem("Open in Editor", handleOpenInEditor)}
       {menuItem("Reveal in Explorer", handleRevealInExplorer)}
       {menuItem("Copy Path", handleCopyPath)}
+      {onBlame && !isUntracked && menuItem("Blame", onBlame)}
     </div>
   );
 }
@@ -219,7 +222,7 @@ function SectionHeader({
   count,
   expanded,
   onToggle,
-  accent = "#b3b3b3",
+  accent = "var(--color-text-secondary)",
   actions,
 }: SectionHeaderProps) {
   return (
@@ -283,7 +286,7 @@ function MiniBtn({
   label,
   title,
   onClick,
-  color = "#b3b3b3",
+  color = "var(--color-text-secondary)",
 }: {
   label: string;
   title: string;
@@ -326,14 +329,16 @@ interface FileRowProps {
   selected: boolean;
   isStaged: boolean;
   repoPath: string;
+  maxFileSizeMb?: number;
   onSelect: () => void;
   onStage?: () => void;
   onUnstage?: () => void;
   onDiscard?: () => void;
   onDelete?: () => void;
+  onBlame?: () => void;
 }
 
-function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnstage, onDiscard, onDelete }: FileRowProps) {
+function FileRow({ file, selected, isStaged, repoPath, maxFileSizeMb, onSelect, onStage, onUnstage, onDiscard, onDelete, onBlame }: FileRowProps) {
   const [hovered, setHovered] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const filename = file.path.split(/[/\\]/).pop() ?? file.path;
@@ -361,11 +366,11 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
           padding: "6px 12px 6px 16px",
           cursor: "pointer",
           background: selected
-            ? "rgba(29,185,84,0.12)"
+            ? "var(--color-success-dim)"
             : hovered
             ? "var(--overlay-soft)"
             : "transparent",
-          borderLeft: selected ? "2px solid #1DB954" : "2px solid transparent",
+          borderLeft: selected ? "2px solid var(--color-accent)" : "2px solid transparent",
           transition: "background 100ms ease",
           userSelect: "none",
         }}
@@ -415,12 +420,25 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
           )}
         </div>
 
-        {/* File size */}
-        {file.size > 0 && (
-          <span style={{ fontSize: "10px", color: "var(--color-text-disabled)", flexShrink: 0 }}>
-            {formatSize(file.size)}
-          </span>
-        )}
+        {/* File size — with large file warning */}
+        {file.size > 0 && (() => {
+          const limitBytes = (maxFileSizeMb ?? 50) * 1024 * 1024;
+          const isLarge = file.size > limitBytes;
+          const isWarn = !isLarge && file.size > limitBytes * 0.5;
+          return (
+            <span
+              title={isLarge ? `File exceeds ${maxFileSizeMb ?? 50} MB limit — consider .gitignore or LFS` : undefined}
+              style={{
+                fontSize: "10px",
+                flexShrink: 0,
+                fontWeight: isLarge ? 700 : 400,
+                color: isLarge ? "var(--color-error)" : isWarn ? "var(--color-warning)" : "var(--color-text-disabled)",
+              }}
+            >
+              {isLarge && "\u26A0 "}{formatSize(file.size)}
+            </span>
+          );
+        })()}
 
         {/* Action buttons — visible on hover */}
         {hovered && (
@@ -440,9 +458,9 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
                   width: "22px",
                   height: "22px",
                   borderRadius: "4px",
-                  background: "rgba(29,185,84,0.2)",
+                  background: "var(--color-accent-dim)",
                   border: "none",
-                  color: "#1DB954",
+                  color: "var(--color-success)",
                   cursor: "pointer",
                   fontSize: "13px",
                   display: "flex",
@@ -452,11 +470,11 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
                 }}
                 onMouseEnter={(e) =>
                   ((e.currentTarget as HTMLButtonElement).style.background =
-                    "rgba(29,185,84,0.35)")
+                    "var(--color-success-border)")
                 }
                 onMouseLeave={(e) =>
                   ((e.currentTarget as HTMLButtonElement).style.background =
-                    "rgba(29,185,84,0.2)")
+                    "var(--color-accent-dim)")
                 }
               >
                 +
@@ -508,9 +526,9 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
                   width: "22px",
                   height: "22px",
                   borderRadius: "4px",
-                  background: "rgba(229,83,75,0.15)",
+                  background: "var(--color-error-dim)",
                   border: "none",
-                  color: "#e5534b",
+                  color: "var(--color-error)",
                   cursor: "pointer",
                   fontSize: "12px",
                   display: "flex",
@@ -520,11 +538,11 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
                 }}
                 onMouseEnter={(e) =>
                   ((e.currentTarget as HTMLButtonElement).style.background =
-                    "rgba(229,83,75,0.3)")
+                    "var(--color-error-border)")
                 }
                 onMouseLeave={(e) =>
                   ((e.currentTarget as HTMLButtonElement).style.background =
-                    "rgba(229,83,75,0.15)")
+                    "var(--color-error-dim)")
                 }
               >
                 ✕
@@ -547,6 +565,7 @@ function FileRow({ file, selected, isStaged, repoPath, onSelect, onStage, onUnst
           onUnstage={onUnstage}
           onDiscard={onDiscard}
           onDelete={onDelete}
+          onBlame={onBlame}
         />
       )}
     </>
@@ -580,6 +599,8 @@ export function StagingArea() {
   const [isCommitting, setIsCommitting] = useState(false);
   const [showAmend, setShowAmend] = useState(false);
   const [currentBranch, setCurrentBranch] = useState<string | null>(null);
+  const [blameFile, setBlameFile] = useState<string | null>(null);
+  const [fileFilter, setFileFilter] = useState("");
 
   // Load branch name for PR button
   useEffect(() => {
@@ -605,6 +626,13 @@ export function StagingArea() {
   const untracked = unstaged.filter(
     (f) => f.status === "?" || f.status === "untracked"
   );
+
+  // Apply file filter
+  const fq = fileFilter.toLowerCase();
+  const filteredStaged = fq ? staged.filter(f => f.path.toLowerCase().includes(fq)) : staged;
+  const filteredConflicts = fq ? conflicts.filter(f => f.path.toLowerCase().includes(fq)) : conflicts;
+  const filteredModified = fq ? modified.filter(f => f.path.toLowerCase().includes(fq)) : modified;
+  const filteredUntracked = fq ? untracked.filter(f => f.path.toLowerCase().includes(fq)) : untracked;
 
   const loadFiles = useCallback(async () => {
     if (!repoPath) return;
@@ -772,6 +800,39 @@ export function StagingArea() {
     }
   };
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleAiCommitMsg = async () => {
+    if (staged.length === 0) {
+      addToast("warning", "Stage files first to generate a commit message");
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const msg = await ipc.aiGenerateCommitMessage(repoPath);
+      if (msg) {
+        setCommitMsg(msg);
+        addToast("success", "AI commit message generated");
+      }
+    } catch (e) {
+      addToast("error", `AI generation failed: ${e}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handlePushOnly = async () => {
+    try {
+      await ipc.pushRepo(repoPath);
+      addToast("success", "Pushed to remote");
+      logActivity({ repoName: repoDisplayName, operation: "Push", success: true, message: "Pushed to remote", isDestructive: false });
+      refreshStatus(repoPath);
+    } catch (e) {
+      addToast("error", `Push failed: ${e}`);
+      logActivity({ repoName: repoDisplayName, operation: "Push", success: false, message: String(e), isDestructive: false });
+    }
+  };
+
   const handleCommit = async (andPush = false) => {
     if (!commitMsg.trim()) {
       addToast("warning", "Commit message is required");
@@ -792,7 +853,7 @@ export function StagingArea() {
       const op = showAmend ? "Amend Commit" : "Commit";
       logActivity({ repoName: repoDisplayName, operation: op, success: true, message: `${hash.slice(0, 7)}: ${commitMsg.slice(0, 60)}`, isDestructive: showAmend });
       if (andPush) {
-        await ipc.pushRepo(repoPath, "");
+        await ipc.pushRepo(repoPath);
         addToast("success", "Pushed to remote");
         logActivity({ repoName: repoDisplayName, operation: "Push", success: true, message: "Pushed after commit", isDestructive: false });
       }
@@ -835,20 +896,20 @@ export function StagingArea() {
       style={{
         position: "fixed",
         inset: 0,
-        background: "var(--overlay-backdrop)",
-        backdropFilter: "blur(6px)",
+        background: "var(--color-bg-primary)",
+        backdropFilter: "blur(24px) saturate(1.5)",
+        WebkitBackdropFilter: "blur(24px) saturate(1.5)",
         zIndex: 600,
         display: "flex",
         flexDirection: "column",
-        animation: "fade-in 150ms ease both",
       }}
     >
       {/* Header */}
       <div
         style={{
-          height: "56px",
+          height: "52px",
           background: "var(--color-bg-card)",
-          borderBottom: "1px solid var(--color-border)",
+          borderBottom: "1px solid var(--color-border-subtle)",
           display: "flex",
           alignItems: "center",
           padding: "0 20px",
@@ -861,8 +922,8 @@ export function StagingArea() {
             width: "8px",
             height: "8px",
             borderRadius: "50%",
-            background: "#1DB954",
-            boxShadow: "0 0 8px rgba(29,185,84,0.6)",
+            background: "var(--color-accent)",
+            boxShadow: "0 0 8px var(--color-accent-border)",
             flexShrink: 0,
           }}
         />
@@ -893,21 +954,21 @@ export function StagingArea() {
               gap: "5px",
               padding: "5px 12px",
               borderRadius: "20px",
-              background: "rgba(61,155,233,0.1)",
-              border: "1px solid rgba(61,155,233,0.3)",
-              color: "#3d9be9",
+              background: "var(--color-info-dim)",
+              border: "1px solid var(--color-info-border)",
+              color: "var(--color-info)",
               fontSize: "12px",
               fontWeight: 600,
               textDecoration: "none",
               transition: "all 120ms ease",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.background = "rgba(61,155,233,0.2)";
-              (e.currentTarget as HTMLAnchorElement).style.color = "#6bb8f5";
+              (e.currentTarget as HTMLAnchorElement).style.background = "var(--color-info-border)";
+              (e.currentTarget as HTMLAnchorElement).style.color = "var(--color-info)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.background = "rgba(61,155,233,0.1)";
-              (e.currentTarget as HTMLAnchorElement).style.color = "#3d9be9";
+              (e.currentTarget as HTMLAnchorElement).style.background = "var(--color-info-dim)";
+              (e.currentTarget as HTMLAnchorElement).style.color = "var(--color-info)";
             }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -992,10 +1053,62 @@ export function StagingArea() {
             borderRight: "1px solid var(--overlay-subtle)",
             display: "flex",
             flexDirection: "column",
-            background: "#161616",
+            background: "var(--color-bg-card)",
             overflow: "hidden",
           }}
         >
+          {/* File filter */}
+          {!loading && (staged.length + unstaged.length) > 5 && (
+            <div style={{
+              padding: "6px 12px",
+              borderBottom: "1px solid var(--overlay-soft)",
+              flexShrink: 0,
+            }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "5px 10px",
+                background: "var(--overlay-soft)",
+                borderRadius: "8px",
+                border: "1px solid var(--overlay-light)",
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.4 }}>
+                  <circle cx="11" cy="11" r="7" stroke="var(--color-text-secondary)" strokeWidth="2" />
+                  <path d="M16 16l4 4" stroke="var(--color-text-secondary)" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+                <input
+                  value={fileFilter}
+                  onChange={(e) => setFileFilter(e.target.value)}
+                  placeholder="Filter files…"
+                  style={{
+                    flex: 1,
+                    background: "none",
+                    border: "none",
+                    outline: "none",
+                    color: "var(--color-text-primary)",
+                    fontSize: "11px",
+                  }}
+                />
+                {fileFilter && (
+                  <button
+                    onClick={() => setFileFilter("")}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--color-text-disabled)",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      padding: "0 2px",
+                      lineHeight: 1,
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           <div style={{ flex: 1, overflowY: "auto" }}>
             {loading ? (
               <div
@@ -1010,31 +1123,32 @@ export function StagingArea() {
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 0.8s linear infinite" }}>
-                  <circle cx="12" cy="12" r="10" stroke="#333" strokeWidth="3" />
-                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#1DB954" strokeWidth="3" strokeLinecap="round" />
+                  <circle cx="12" cy="12" r="10" stroke="var(--overlay-medium)" strokeWidth="3" />
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="var(--color-accent)" strokeWidth="3" strokeLinecap="round" />
                 </svg>
                 Loading files…
               </div>
             ) : (
               <>
                 {/* Conflicts section */}
-                {conflicts.length > 0 && (
+                {filteredConflicts.length > 0 && (
                   <div>
                     <SectionHeader
                       title="Conflicted"
-                      count={conflicts.length}
+                      count={filteredConflicts.length}
                       expanded={expandConflicts}
                       onToggle={() => setExpandConflicts((v) => !v)}
-                      accent="#e5534b"
+                      accent="var(--color-error)"
                     />
                     {expandConflicts &&
-                      conflicts.map((f) => (
+                      filteredConflicts.map((f) => (
                         <FileRow
                           key={f.path}
                           file={f}
                           selected={selectedFile?.path === f.path}
                           isStaged={false}
                           repoPath={repoPath}
+                          maxFileSizeMb={config?.max_file_size_mb}
                           onSelect={() =>
                             setSelectedFile({ path: f.path, staged: false })
                           }
@@ -1047,22 +1161,22 @@ export function StagingArea() {
                 <div>
                   <SectionHeader
                     title="Staged"
-                    count={staged.length}
+                    count={filteredStaged.length}
                     expanded={expandStaged}
                     onToggle={() => setExpandStaged((v) => !v)}
-                    accent="#1DB954"
+                    accent="var(--color-success)"
                     actions={
                       staged.length > 0 ? (
                         <MiniBtn
                           label="Unstage all"
                           title="Unstage all changes"
                           onClick={handleUnstageAll}
-                          color="#b3b3b3"
+                          color="var(--color-text-secondary)"
                         />
                       ) : undefined
                     }
                   />
-                  {expandStaged && staged.length === 0 && (
+                  {expandStaged && filteredStaged.length === 0 && (
                     <div
                       style={{
                         padding: "10px 16px",
@@ -1071,21 +1185,23 @@ export function StagingArea() {
                         fontStyle: "italic",
                       }}
                     >
-                      Nothing staged
+                      {fq ? "No matches" : "Nothing staged"}
                     </div>
                   )}
                   {expandStaged &&
-                    staged.map((f) => (
+                    filteredStaged.map((f) => (
                       <FileRow
                         key={f.path}
                         file={f}
                         selected={selectedFile?.path === f.path && selectedFile.staged}
                         isStaged={true}
                         repoPath={repoPath}
+                        maxFileSizeMb={config?.max_file_size_mb}
                         onSelect={() =>
                           setSelectedFile({ path: f.path, staged: true })
                         }
                         onUnstage={() => handleUnstageFile(f.path)}
+                        onBlame={() => setBlameFile(f.path)}
                       />
                     ))}
                 </div>
@@ -1094,22 +1210,22 @@ export function StagingArea() {
                 <div>
                   <SectionHeader
                     title="Modified"
-                    count={modified.length}
+                    count={filteredModified.length}
                     expanded={expandModified}
                     onToggle={() => setExpandModified((v) => !v)}
-                    accent="#3d9be9"
+                    accent="var(--color-info)"
                     actions={
                       modified.length > 0 ? (
                         <MiniBtn
                           label="Stage all"
                           title="Stage all modified files"
                           onClick={handleStageAll}
-                          color="#1DB954"
+                          color="var(--color-success)"
                         />
                       ) : undefined
                     }
                   />
-                  {expandModified && modified.length === 0 && (
+                  {expandModified && filteredModified.length === 0 && (
                     <div
                       style={{
                         padding: "10px 16px",
@@ -1118,22 +1234,24 @@ export function StagingArea() {
                         fontStyle: "italic",
                       }}
                     >
-                      No modifications
+                      {fq ? "No matches" : "No modifications"}
                     </div>
                   )}
                   {expandModified &&
-                    modified.map((f) => (
+                    filteredModified.map((f) => (
                       <FileRow
                         key={f.path}
                         file={f}
                         selected={selectedFile?.path === f.path && !selectedFile.staged}
                         isStaged={false}
                         repoPath={repoPath}
+                        maxFileSizeMb={config?.max_file_size_mb}
                         onSelect={() =>
                           setSelectedFile({ path: f.path, staged: false })
                         }
                         onStage={() => handleStageFile(f.path)}
                         onDiscard={() => handleDiscardFile(f.path)}
+                        onBlame={() => setBlameFile(f.path)}
                       />
                     ))}
                 </div>
@@ -1142,22 +1260,22 @@ export function StagingArea() {
                 <div>
                   <SectionHeader
                     title="Untracked"
-                    count={untracked.length}
+                    count={filteredUntracked.length}
                     expanded={expandUntracked}
                     onToggle={() => setExpandUntracked((v) => !v)}
-                    accent="#b3b3b3"
+                    accent="var(--color-text-secondary)"
                     actions={
                       untracked.length > 0 ? (
                         <MiniBtn
                           label="Stage all"
                           title="Stage all untracked files"
                           onClick={handleStageAll}
-                          color="#1DB954"
+                          color="var(--color-success)"
                         />
                       ) : undefined
                     }
                   />
-                  {expandUntracked && untracked.length === 0 && (
+                  {expandUntracked && filteredUntracked.length === 0 && (
                     <div
                       style={{
                         padding: "10px 16px",
@@ -1166,17 +1284,18 @@ export function StagingArea() {
                         fontStyle: "italic",
                       }}
                     >
-                      No untracked files
+                      {fq ? "No matches" : "No untracked files"}
                     </div>
                   )}
                   {expandUntracked &&
-                    untracked.map((f) => (
+                    filteredUntracked.map((f) => (
                       <FileRow
                         key={f.path}
                         file={f}
                         selected={selectedFile?.path === f.path && !selectedFile.staged}
                         isStaged={false}
                         repoPath={repoPath}
+                        maxFileSizeMb={config?.max_file_size_mb}
                         onSelect={() =>
                           setSelectedFile({ path: f.path, staged: false })
                         }
@@ -1206,7 +1325,7 @@ export function StagingArea() {
                       >
                         <path
                           d="M20 6L9 17l-5-5"
-                          stroke="#1DB954"
+                          stroke="var(--color-success)"
                           strokeWidth="2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -1227,7 +1346,7 @@ export function StagingArea() {
             style={{
               borderTop: "1px solid var(--color-border-subtle)",
               padding: "14px 16px",
-              background: "#161616",
+              background: "var(--color-bg-card)",
               flexShrink: 0,
             }}
           >
@@ -1236,6 +1355,9 @@ export function StagingArea() {
               onChange={setCommitMsg}
               onCommit={() => handleCommit(false)}
               onCommitAndPush={() => handleCommit(true)}
+              onPushOnly={handlePushOnly}
+              onAiGenerate={handleAiCommitMsg}
+              isGenerating={isGenerating}
               disabled={isCommitting}
               amend={showAmend}
               onAmendChange={handleAmendChange}
@@ -1244,46 +1366,54 @@ export function StagingArea() {
           </div>
         </div>
 
-        {/* Right panel: diff viewer */}
+        {/* Right panel: diff viewer or blame */}
         <div style={{ flex: 1, overflow: "hidden" }}>
-          <DiffViewer
-            diff={diff}
-            loading={diffLoading}
-            repoPath={repoPath}
-            onStageHunk={
-              selectedFile && !selectedFile.staged
-                ? async (patch) => {
-                    try {
-                      await ipc.stageHunk(repoPath, patch);
-                      await loadFiles();
-                      refreshStatus(repoPath);
-                    } catch (e) {
-                      addToast("error", `Stage hunk failed: ${e}`);
+          {blameFile ? (
+            <BlameViewer
+              repoPath={repoPath}
+              filePath={blameFile}
+              onClose={() => setBlameFile(null)}
+            />
+          ) : (
+            <DiffViewer
+              diff={diff}
+              loading={diffLoading}
+              repoPath={repoPath}
+              onStageHunk={
+                selectedFile && !selectedFile.staged
+                  ? async (patch) => {
+                      try {
+                        await ipc.stageHunk(repoPath, patch);
+                        await loadFiles();
+                        refreshStatus(repoPath);
+                      } catch (e) {
+                        addToast("error", `Stage hunk failed: ${e}`);
+                      }
                     }
-                  }
-                : undefined
-            }
-            onDiscardHunk={
-              selectedFile && !selectedFile.staged
-                ? async (patch) => {
-                    const ok = await useConfirmStore.getState().request({
-                      title: "Discard hunk?",
-                      description: "Discard this hunk? This cannot be undone.",
-                      danger: true,
-                      confirmLabel: "Discard",
-                    });
-                    if (!ok) return;
-                    try {
-                      await ipc.discardHunk(repoPath, patch);
-                      await loadFiles();
-                      refreshStatus(repoPath);
-                    } catch (e) {
-                      addToast("error", `Discard hunk failed: ${e}`);
+                  : undefined
+              }
+              onDiscardHunk={
+                selectedFile && !selectedFile.staged
+                  ? async (patch) => {
+                      const ok = await useConfirmStore.getState().request({
+                        title: "Discard hunk?",
+                        description: "Discard this hunk? This cannot be undone.",
+                        danger: true,
+                        confirmLabel: "Discard",
+                      });
+                      if (!ok) return;
+                      try {
+                        await ipc.discardHunk(repoPath, patch);
+                        await loadFiles();
+                        refreshStatus(repoPath);
+                      } catch (e) {
+                        addToast("error", `Discard hunk failed: ${e}`);
+                      }
                     }
-                  }
-                : undefined
-            }
-          />
+                  : undefined
+              }
+            />
+          )}
         </div>
       </div>
     </div>

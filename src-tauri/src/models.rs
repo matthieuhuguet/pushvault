@@ -67,6 +67,7 @@ pub struct CommitInfo {
     pub insertions: u32,
     pub deletions: u32,
     pub files_changed: u32,
+    pub parent_hashes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -174,4 +175,25 @@ pub struct BisectInfo {
     pub log: String,             // contents of BISECT_LOG (trimmed)
     pub steps_done: u32,         // lines in BISECT_LOG that are good/bad marks
     pub steps_remaining: u32,    // estimated from log (2^n search, rough estimate)
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BlameLine {
+    pub line_no: u32,
+    pub content: String,
+    pub commit_hash: String,
+    pub short_hash: String,
+    pub author: String,
+    pub date: String,
+    pub summary: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ReflogEntry {
+    pub index: u32,
+    pub hash: String,
+    pub short_hash: String,
+    pub action: String,
+    pub message: String,
+    pub date: String,
 }

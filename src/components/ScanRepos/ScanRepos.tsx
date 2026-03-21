@@ -70,16 +70,16 @@ export function ScanRepos({ onClose }: Props) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "var(--color-bg-elevated)", borderRadius: "12px", width: "560px", maxWidth: "95vw", maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
-        <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #3d3d3d", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid var(--color-border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700 }}>Scan for Repositories</h2>
           <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--color-text-secondary)", cursor: "pointer", fontSize: "20px" }}>&#x2715;</button>
         </div>
 
-        <div style={{ padding: "16px 24px", borderBottom: "1px solid #3d3d3d" }}>
+        <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--color-border)" }}>
           <button
             onClick={handleScan}
             disabled={scanning}
-            style={{ background: "#1DB954", border: "none", borderRadius: "500px", padding: "10px 20px", color: "#000", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}
+            style={{ background: "var(--color-accent)", border: "none", borderRadius: "500px", padding: "10px 20px", color: "#000", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}
           >{scanning ? "Scanning..." : "Choose Folder to Scan"}</button>
           {found.length > 0 && (
             <span style={{ marginLeft: "12px", fontSize: "13px", color: "var(--color-text-secondary)" }}>
@@ -90,8 +90,8 @@ export function ScanRepos({ onClose }: Props) {
 
         {found.length > 0 && (
           <>
-            <div style={{ padding: "8px 24px", borderBottom: "1px solid #3d3d3d", display: "flex", alignItems: "center", gap: "8px" }}>
-              <input type="checkbox" checked={selected.size === found.length} onChange={toggleAll} style={{ accentColor: "#1DB954" }} />
+            <div style={{ padding: "8px 24px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", gap: "8px" }}>
+              <input type="checkbox" checked={selected.size === found.length} onChange={toggleAll} style={{ accentColor: "var(--color-accent)" }} />
               <span style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>Select all ({selected.size}/{found.length})</span>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: "8px 24px" }}>
@@ -100,7 +100,7 @@ export function ScanRepos({ onClose }: Props) {
                 const name = parts[parts.length - 1] || p;
                 return (
                   <label key={p} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 0", cursor: "pointer", borderBottom: "1px solid var(--overlay-soft)" }}>
-                    <input type="checkbox" checked={selected.has(p)} onChange={() => toggle(p)} style={{ accentColor: "#1DB954" }} />
+                    <input type="checkbox" checked={selected.has(p)} onChange={() => toggle(p)} style={{ accentColor: "var(--color-accent)" }} />
                     <div>
                       <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--color-text-primary)" }}>{name}</p>
                       <p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-text-disabled)", fontFamily: "monospace" }}>{p}</p>
@@ -109,12 +109,12 @@ export function ScanRepos({ onClose }: Props) {
                 );
               })}
             </div>
-            <div style={{ padding: "16px 24px", borderTop: "1px solid #3d3d3d", display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-              <button onClick={onClose} style={{ background: "transparent", border: "1px solid #535353", borderRadius: "500px", padding: "8px 20px", color: "var(--color-text-primary)", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
+            <div style={{ padding: "16px 24px", borderTop: "1px solid var(--color-border)", display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+              <button onClick={onClose} style={{ background: "transparent", border: "1px solid var(--color-border)", borderRadius: "500px", padding: "8px 20px", color: "var(--color-text-primary)", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
               <button
                 onClick={handleAdd}
                 disabled={adding || selected.size === 0}
-                style={{ background: "#1DB954", border: "none", borderRadius: "500px", padding: "8px 20px", color: "#000", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
+                style={{ background: "var(--color-accent)", border: "none", borderRadius: "500px", padding: "8px 20px", color: "#000", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
               >{adding ? "Adding..." : `Add ${selected.size} Repos`}</button>
             </div>
           </>

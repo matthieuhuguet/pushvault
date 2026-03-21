@@ -172,7 +172,6 @@ export function RebasePanel({ repoPath, onClose }: RebasePanelProps) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        animation: "fade-in 150ms ease both",
       }}
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >

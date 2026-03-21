@@ -54,15 +54,16 @@ export function FilterPills() {
     <div
       style={{
         display: "flex",
-        gap: "8px",
+        gap: "4px",
         alignItems: "center",
-        flexWrap: "wrap",
+        background: "var(--overlay-subtle)",
+        borderRadius: "10px",
+        padding: "3px",
       }}
     >
       {PILLS.map((pill) => {
         const isActive = activeFilter === pill.key;
         const count = getCount(pill);
-        const hasNonZero = count !== null && count > 0;
 
         return (
           <button
@@ -71,20 +72,18 @@ export function FilterPills() {
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: "6px",
-              padding: "5px 14px",
-              borderRadius: "20px",
-              border: isActive
-                ? "1px solid var(--color-accent)"
-                : "1px solid var(--color-border)",
+              gap: "5px",
+              padding: "5px 12px",
+              borderRadius: "8px",
+              border: "none",
               background: isActive
                 ? "var(--color-accent)"
-                : "var(--color-bg-elevated)",
+                : "transparent",
               color: isActive ? "#000" : "var(--color-text-secondary)",
-              fontSize: "12px",
+              fontSize: "11px",
               fontWeight: isActive ? 700 : 500,
               cursor: "pointer",
-              transition: "all 150ms ease",
+              transition: "all 150ms cubic-bezier(0.16, 1, 0.3, 1)",
               whiteSpace: "nowrap",
               letterSpacing: "0.02em",
             }}
@@ -98,7 +97,7 @@ export function FilterPills() {
             onMouseLeave={(e) => {
               if (!isActive) {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "var(--overlay-subtle)";
+                  "transparent";
                 (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
               }
             }}
@@ -107,18 +106,18 @@ export function FilterPills() {
             {pill.key === "all" && (
               <span
                 style={{
-                  fontSize: "11px",
+                  fontSize: "10px",
                   fontWeight: 700,
-                  minWidth: "16px",
-                  height: "16px",
+                  minWidth: "15px",
+                  height: "15px",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  borderRadius: "8px",
+                  borderRadius: "6px",
                   background: isActive
                     ? "rgba(0,0,0,0.2)"
                     : "var(--overlay-medium)",
-                  padding: "0 4px",
+                  padding: "0 3px",
                 }}
               >
                 {totalRepos}
@@ -127,25 +126,25 @@ export function FilterPills() {
             {count !== null && count > 0 && (
               <span
                 style={{
-                  fontSize: "11px",
+                  fontSize: "10px",
                   fontWeight: 700,
-                  minWidth: "16px",
-                  height: "16px",
+                  minWidth: "15px",
+                  height: "15px",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  borderRadius: "8px",
+                  borderRadius: "6px",
                   background: isActive
                     ? "rgba(0,0,0,0.2)"
                     : pill.key === "conflicts" || pill.key === "errors"
-                    ? "rgba(229,83,75,0.3)"
-                    : "rgba(29,185,84,0.2)",
+                    ? "var(--color-error-dim)"
+                    : "var(--color-accent-dim)",
                   color: isActive
                     ? "#000"
                     : pill.key === "conflicts" || pill.key === "errors"
-                    ? "#e5534b"
-                    : "#1DB954",
-                  padding: "0 4px",
+                    ? "var(--color-error)"
+                    : "var(--color-accent)",
+                  padding: "0 3px",
                 }}
               >
                 {count}

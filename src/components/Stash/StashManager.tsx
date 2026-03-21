@@ -3,6 +3,7 @@ import { ipc } from "../../lib/ipc";
 import { useToastStore } from "../../store/toastStore";
 import { useRepoStore } from "../../store/repoStore";
 import { useConfirmStore } from "../../store/confirmStore";
+import { DiffViewer } from "../Diff/DiffViewer";
 import type { DiffResult, StashEntry } from "../../types";
 
 interface StashManagerProps {
@@ -144,14 +145,14 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
       style={{
         position: "fixed",
         inset: 0,
-        background: "var(--overlay-backdrop)",
-        backdropFilter: "blur(6px)",
+        background: "var(--color-bg-primary)",
+        backdropFilter: "blur(24px) saturate(1.5)",
+        WebkitBackdropFilter: "blur(24px) saturate(1.5)",
         zIndex: 600,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         padding: "24px",
-        animation: "fade-in 150ms ease both",
       }}
     >
       <div
@@ -495,61 +496,8 @@ export function StashManager({ repoPath, onClose, repoName }: StashManagerProps)
                         overflowY: "auto",
                       }}
                     >
-                      {diffLoading ? (
-                        <div style={{ padding: "16px 24px", display: "flex", alignItems: "center", gap: "8px", color: "var(--color-text-muted)", fontSize: "12px" }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 0.8s linear infinite" }}>
-                            <circle cx="12" cy="12" r="10" stroke="#333" strokeWidth="3" />
-                            <path d="M12 2a10 10 0 0 1 10 10" stroke="#f59b00" strokeWidth="3" strokeLinecap="round" />
-                          </svg>
-                          Loading diff…
-                        </div>
-                      ) : stashDiff ? (
-                        <>
-                          <div style={{ padding: "5px 16px", borderBottom: "1px solid var(--overlay-soft)", display: "flex", gap: "12px", fontSize: "11px", background: "var(--color-bg-card)" }}>
-                            <span style={{ color: "#1DB954" }}>+{stashDiff.additions}</span>
-                            <span style={{ color: "#e5534b" }}>−{stashDiff.deletions}</span>
-                          </div>
-                          <div>
-                            {stashDiff.content.split("\n").map((line, i) => {
-                              const isAdd = line.startsWith("+") && !line.startsWith("+++");
-                              const isDel = line.startsWith("-") && !line.startsWith("---");
-                              const isHunk = line.startsWith("@@");
-                              const isHeader = line.startsWith("diff ") || line.startsWith("index ") || line.startsWith("---") || line.startsWith("+++");
-                              return (
-                                <div
-                                  key={i}
-                                  style={{
-                                    padding: "0 16px",
-                                    fontFamily: '"Cascadia Code", "Fira Code", monospace',
-                                    fontSize: "11px",
-                                    lineHeight: "18px",
-                                    whiteSpace: "pre",
-                                    overflowX: "hidden",
-                                    textOverflow: "ellipsis",
-                                    background: isAdd
-                                      ? "rgba(29,185,84,0.08)"
-                                      : isDel
-                                      ? "rgba(229,83,75,0.08)"
-                                      : isHunk
-                                      ? "rgba(61,155,233,0.05)"
-                                      : "transparent",
-                                    color: isAdd
-                                      ? "#4ec76e"
-                                      : isDel
-                                      ? "#e5534b"
-                                      : isHunk
-                                      ? "#3d9be9"
-                                      : isHeader
-                                      ? "#535353"
-                                      : "#b3b3b3",
-                                  }}
-                                >
-                                  {line || "\u00A0"}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </>
+                      {diffLoading || stashDiff ? (
+                        <DiffViewer diff={stashDiff} loading={diffLoading} repoPath={repoPath} />
                       ) : (
                         <div style={{ padding: "16px 24px", color: "var(--color-text-disabled)", fontSize: "12px" }}>
                           No diff available

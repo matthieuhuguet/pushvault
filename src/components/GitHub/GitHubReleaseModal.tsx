@@ -107,7 +107,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
     background: "var(--overlay-soft)",
     border: "1px solid var(--overlay-medium)",
     borderRadius: "8px",
-    color: "#e0e0e0",
+    color: "var(--color-text-primary)",
     fontSize: "13px",
     fontFamily: "inherit",
     outline: "none",
@@ -129,7 +129,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
     width: "32px",
     height: "18px",
     borderRadius: "9px",
-    background: active ? "#1DB954" : "var(--overlay-medium)",
+    background: active ? "var(--color-accent)" : "var(--overlay-medium)",
     position: "relative",
     transition: "background 150ms ease",
     flexShrink: 0,
@@ -164,7 +164,6 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
         justifyContent: "center",
         zIndex: 850,
         padding: "24px",
-        animation: "fade-in 150ms ease both",
       }}
     >
       <div
@@ -244,14 +243,14 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                 Release created!
               </h3>
               <p style={{ fontSize: "14px", color: "var(--color-text-secondary)", marginBottom: "6px" }}>
-                <strong style={{ color: "#1DB954" }}>{created.tag_name}</strong>
+                <strong style={{ color: "var(--color-accent)" }}>{created.tag_name}</strong>
                 {created.draft && (
                   <span style={{
                     marginLeft: "8px",
                     fontSize: "11px",
                     padding: "2px 7px",
-                    background: "rgba(245,155,0,0.15)",
-                    color: "#f59b00",
+                    background: "var(--color-warning-dim)",
+                    color: "var(--color-warning)",
                     borderRadius: "10px",
                   }}>Draft</span>
                 )}
@@ -282,7 +281,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                     alignItems: "center",
                     gap: "6px",
                     padding: "9px 18px",
-                    background: "#1DB954",
+                    background: "var(--color-accent)",
                     color: "#000",
                     borderRadius: "8px",
                     fontSize: "13px",
@@ -318,11 +317,11 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                   <div style={{
                     marginBottom: "16px",
                     padding: "10px 14px",
-                    background: "rgba(245,155,0,0.1)",
-                    border: "1px solid rgba(245,155,0,0.3)",
+                    background: "var(--color-warning-dim)",
+                    border: "1px solid var(--color-warning-border)",
                     borderRadius: "8px",
                     fontSize: "12px",
-                    color: "#f59b00",
+                    color: "var(--color-warning)",
                   }}>
                     ⚠ No GitHub token found. Add one in Settings → GitHub Token to create releases.
                   </div>
@@ -331,14 +330,14 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                 {/* Tag name */}
                 <div style={{ marginBottom: "14px" }}>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: "6px", letterSpacing: "0.04em" }}>
-                    TAG NAME <span style={{ color: "#e5534b" }}>*</span>
+                    TAG NAME <span style={{ color: "var(--color-error)" }}>*</span>
                   </label>
                   <input
                     value={tagName}
                     onChange={(e) => setTagName(e.target.value)}
                     placeholder="v1.0.0"
                     style={inputStyle}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.5)")}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-accent-border)")}
                     onBlur={(e) => (e.currentTarget.style.borderColor = "var(--overlay-medium)")}
                     autoFocus
                   />
@@ -355,7 +354,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                     onChange={(e) => setReleaseName(e.target.value)}
                     placeholder="Release v1.0.0"
                     style={inputStyle}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.5)")}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-accent-border)")}
                     onBlur={(e) => (e.currentTarget.style.borderColor = "var(--overlay-medium)")}
                   />
                 </div>
@@ -377,7 +376,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                       minHeight: "100px",
                       lineHeight: "1.5",
                     } as React.CSSProperties}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.5)")}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-accent-border)")}
                     onBlur={(e) => (e.currentTarget.style.borderColor = "var(--overlay-medium)")}
                   />
                 </div>
@@ -409,11 +408,11 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                   <div style={{
                     marginBottom: "14px",
                     padding: "10px 14px",
-                    background: "rgba(229,83,75,0.1)",
-                    border: "1px solid rgba(229,83,75,0.3)",
+                    background: "var(--color-error-dim)",
+                    border: "1px solid var(--color-error-border)",
                     borderRadius: "8px",
                     fontSize: "12px",
-                    color: "#e5534b",
+                    color: "var(--color-error)",
                   }}>
                     {submitError}
                   </div>
@@ -426,7 +425,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                   style={{
                     width: "100%",
                     padding: "10px",
-                    background: submitting || !token ? "rgba(29,185,84,0.3)" : "#1DB954",
+                    background: submitting || !token ? "var(--color-accent-dim)" : "var(--color-accent)",
                     border: "none",
                     borderRadius: "8px",
                     color: submitting || !token ? "rgba(0,0,0,0.4)" : "#000",
@@ -499,7 +498,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                       <span style={{
                         fontSize: "12px",
                         fontWeight: 700,
-                        color: "#1DB954",
+                        color: "var(--color-accent)",
                         fontFamily: "monospace",
                         flexShrink: 0,
                       }}>
@@ -520,8 +519,8 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                         <span style={{
                           fontSize: "10px",
                           padding: "1px 6px",
-                          background: "rgba(245,155,0,0.12)",
-                          color: "#f59b00",
+                          background: "var(--color-warning-dim)",
+                          color: "var(--color-warning)",
                           borderRadius: "8px",
                           flexShrink: 0,
                         }}>
@@ -582,7 +581,7 @@ export function GitHubReleaseModal({ repoUrl, repoName, onClose }: GitHubRelease
                       (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--overlay-vivid)";
                     }}
                     onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.color = "#535353";
+                      (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-disabled)";
                       (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--overlay-light)";
                     }}
                   >

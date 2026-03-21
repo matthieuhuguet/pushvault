@@ -4,10 +4,10 @@ import type { Toast, ToastLevel } from "../../types";
 
 /* ── Colour map ─────────────────────────────────────────────── */
 const LEVEL_COLORS: Record<ToastLevel, { border: string; icon: string; bar: string }> = {
-  success: { border: "#1db954", icon: "#1db954", bar: "#1db954" },
-  error:   { border: "#e5534b", icon: "#e5534b", bar: "#e5534b" },
-  warning: { border: "#f59b00", icon: "#f59b00", bar: "#f59b00" },
-  info:    { border: "#3d9be9", icon: "#3d9be9", bar: "#3d9be9" },
+  success: { border: "var(--color-success)", icon: "var(--color-success)", bar: "var(--color-success)" },
+  error:   { border: "var(--color-error)", icon: "var(--color-error)", bar: "var(--color-error)" },
+  warning: { border: "var(--color-warning)", icon: "var(--color-warning)", bar: "var(--color-warning)" },
+  info:    { border: "var(--color-info)", icon: "var(--color-info)", bar: "var(--color-info)" },
 };
 
 /* ── Level icons (inline SVG) ───────────────────────────────── */

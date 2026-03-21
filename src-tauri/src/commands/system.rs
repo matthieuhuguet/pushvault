@@ -884,3 +884,310 @@ pub async fn setup_file_watchers(
 
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// Binary file reading (for image preview in diff viewer)
+// ---------------------------------------------------------------------------
+
+/// Read a file from the repo working directory as base64.
+#[command]
+pub async fn read_file_base64(repo_path: String, file_path: String) -> Result<String, String> {
+    use base64::Engine;
+    tokio::task::spawn_blocking(move || {
+        let full = std::path::Path::new(&repo_path).join(&file_path);
+        let bytes = std::fs::read(&full).map_err(|e| e.to_string())?;
+        Ok(base64::engine::general_purpose::STANDARD.encode(&bytes))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Read a file from git at a given ref (commit hash, HEAD, etc.) as base64.
+#[command]
+pub async fn get_file_base64_at_ref(
+    repo_path: String,
+    file_path: String,
+    git_ref: String,
+) -> Result<String, String> {
+    use base64::Engine;
+    tokio::task::spawn_blocking(move || {
+        let repo = git2::Repository::open(&repo_path).map_err(|e| e.to_string())?;
+        let obj = repo.revparse_single(&git_ref).map_err(|e| e.to_string())?;
+        let commit = obj.peel_to_commit().map_err(|e| e.to_string())?;
+        let tree = commit.tree().map_err(|e| e.to_string())?;
+        let entry = tree
+            .get_path(Path::new(&file_path))
+            .map_err(|e| e.to_string())?;
+        let blob = repo.find_blob(entry.id()).map_err(|e| e.to_string())?;
+        Ok(base64::engine::general_purpose::STANDARD.encode(blob.content()))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+// ---------------------------------------------------------------------------
+// Global search across repos
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize)]
+pub struct SearchResult {
+    pub repo_path: String,
+    pub repo_name: String,
+    pub file_path: String,
+    pub line_number: Option<u32>,
+    pub line_content: Option<String>,
+    pub match_type: String, // "filename" | "content"
+}
+
+/// Search file names and optionally content across multiple repo directories.
+#[command]
+pub async fn search_repos(
+    repo_paths: Vec<String>,
+    repo_names: Vec<String>,
+    query: String,
+    search_content: bool,
+    max_results: u32,
+) -> Result<Vec<SearchResult>, String> {
+    tokio::task::spawn_blocking(move || {
+        use walkdir::WalkDir;
+        let query_lower = query.to_lowercase();
+        let mut results = Vec::new();
+        let limit = max_results as usize;
+
+        let skip_dirs: std::collections::HashSet<&str> = [
+            ".git", "node_modules", "target", "dist", "build", "__pycache__",
+            ".venv", "venv", ".cache", "vendor", ".next", ".nuxt",
+        ].into_iter().collect();
+
+        let binary_exts: std::collections::HashSet<&str> = [
+            "png", "jpg", "jpeg", "gif", "bmp", "ico", "webp", "svg",
+            "mp3", "mp4", "avi", "mov", "zip", "gz", "tar", "rar",
+            "exe", "dll", "so", "dylib", "wasm", "ttf", "woff", "woff2",
+            "pdf", "psd", "ai", "sketch",
+        ].into_iter().collect();
+
+        for (i, repo_path) in repo_paths.iter().enumerate() {
+            if results.len() >= limit { break; }
+
+            let repo_name = repo_names.get(i).cloned().unwrap_or_default();
+            let base = std::path::Path::new(repo_path);
+
+            let walker = WalkDir::new(base)
+                .max_depth(8)
+                .into_iter()
+                .filter_entry(|e| {
+                    let name = e.file_name().to_string_lossy();
+                    !skip_dirs.contains(name.as_ref())
+                });
+
+            for entry in walker.flatten() {
+                if results.len() >= limit { break; }
+                if !entry.file_type().is_file() { continue; }
+
+                let rel = entry.path().strip_prefix(base)
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_default();
+
+                let filename = entry.file_name().to_string_lossy().to_lowercase();
+
+                // Filename match
+                if filename.contains(&query_lower) {
+                    results.push(SearchResult {
+                        repo_path: repo_path.clone(),
+                        repo_name: repo_name.clone(),
+                        file_path: rel.clone(),
+                        line_number: None,
+                        line_content: None,
+                        match_type: "filename".to_string(),
+                    });
+                }
+
+                // Content search (skip binary files)
+                if search_content && results.len() < limit {
+                    let ext = entry.path().extension()
+                        .map(|e| e.to_string_lossy().to_lowercase())
+                        .unwrap_or_default();
+
+                    if !binary_exts.contains(ext.as_str()) {
+                        // Only read files up to 1MB
+                        let meta = entry.metadata().ok();
+                        let size = meta.map(|m| m.len()).unwrap_or(0);
+                        if size < 1_048_576 {
+                            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                                for (line_idx, line) in content.lines().enumerate() {
+                                    if results.len() >= limit { break; }
+                                    if line.to_lowercase().contains(&query_lower) {
+                                        results.push(SearchResult {
+                                            repo_path: repo_path.clone(),
+                                            repo_name: repo_name.clone(),
+                                            file_path: rel.clone(),
+                                            line_number: Some((line_idx + 1) as u32),
+                                            line_content: Some(line.chars().take(200).collect()),
+                                            match_type: "content".to_string(),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(results)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+// ---------------------------------------------------------------------------
+// MCP server config generation
+// ---------------------------------------------------------------------------
+
+/// Generate the MCP server configuration JSON for Claude Code.
+/// This creates a config that points to the pushvault.exe binary with --mcp flag.
+#[command]
+pub async fn generate_mcp_config() -> Result<String, String> {
+    let exe_path = std::env::current_exe()
+        .map_err(|e| e.to_string())?
+        .to_string_lossy()
+        .to_string()
+        .replace('\\', "/");
+
+    let config = serde_json::json!({
+        "mcpServers": {
+            "pushvault": {
+                "command": exe_path,
+                "args": ["--mcp"],
+                "description": "PushVault Git Manager — manage repos, view status, commit, push, pull, and interact with GitHub"
+            }
+        }
+    });
+
+    Ok(serde_json::to_string_pretty(&config).unwrap_or_default())
+}
+
+/// Install the MCP server config into Claude Code's settings.
+#[command]
+pub async fn install_mcp_config() -> Result<String, String> {
+    let exe_path = std::env::current_exe()
+        .map_err(|e| e.to_string())?
+        .to_string_lossy()
+        .to_string()
+        .replace('\\', "/");
+
+    // Claude Code config location
+    let home = dirs::home_dir().ok_or("Cannot find home directory")?;
+    let claude_dir = home.join(".claude");
+    std::fs::create_dir_all(&claude_dir).map_err(|e| e.to_string())?;
+
+    let config_path = claude_dir.join("mcp.json");
+
+    // Read existing config or create new
+    let mut config: serde_json::Value = if config_path.exists() {
+        let content = std::fs::read_to_string(&config_path).map_err(|e| e.to_string())?;
+        serde_json::from_str(&content).unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    // Add/update pushvault server
+    let servers = config
+        .as_object_mut()
+        .ok_or("Invalid config format")?
+        .entry("mcpServers")
+        .or_insert(serde_json::json!({}));
+
+    servers["pushvault"] = serde_json::json!({
+        "command": exe_path,
+        "args": ["--mcp"]
+    });
+
+    // Write back
+    let content = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
+    std::fs::write(&config_path, content).map_err(|e| e.to_string())?;
+
+    Ok(format!("MCP config installed at {}", config_path.display()))
+}
+
+/// Run Claude Code CLI to generate a commit message from the current diff.
+#[command]
+pub async fn ai_generate_commit_message(path: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        // Get the staged diff using git
+        let output = hidden_cmd("git")
+            .args(["diff", "--cached", "--stat"])
+            .current_dir(&path)
+            .output()
+            .map_err(|e| format!("Failed to run git diff: {}", e))?;
+
+        let diff_stat = String::from_utf8_lossy(&output.stdout).to_string();
+
+        let diff_output = hidden_cmd("git")
+            .args(["diff", "--cached"])
+            .current_dir(&path)
+            .output()
+            .map_err(|e| format!("Failed to run git diff: {}", e))?;
+
+        let diff = String::from_utf8_lossy(&diff_output.stdout).to_string();
+        if diff.trim().is_empty() {
+            return Err("No staged changes to generate commit message for".into());
+        }
+
+        // Truncate diff to avoid token limit issues
+        let diff_truncated: String = diff.chars().take(8000).collect();
+
+        let prompt = format!(
+            "Based on this git diff, generate a concise conventional commit message (feat/fix/docs/refactor/etc). \
+             Return ONLY the commit message, nothing else. Max 72 chars for subject line.\n\n\
+             Diff stats:\n{}\n\nDiff:\n{}",
+            diff_stat.chars().take(500).collect::<String>(),
+            diff_truncated
+        );
+
+        // Try claude CLI first
+        let result = hidden_cmd("claude")
+            .args(["--print", &prompt])
+            .output();
+
+        match result {
+            Ok(output) if output.status.success() => {
+                let msg = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !msg.is_empty() {
+                    return Ok(msg);
+                }
+            }
+            _ => {}
+        }
+
+        // Fallback: generate a basic commit message from diff stats
+        let files_changed = diff_stat.lines().count().saturating_sub(1);
+        let has_additions = diff.contains("\n+");
+        let has_deletions = diff.contains("\n-");
+
+        let verb = if has_additions && has_deletions {
+            "update"
+        } else if has_additions {
+            "add"
+        } else {
+            "remove"
+        };
+
+        let first_file = diff_stat
+            .lines()
+            .next()
+            .and_then(|l| l.split('|').next())
+            .map(|s| s.trim())
+            .unwrap_or("files");
+
+        let msg = if files_changed == 1 {
+            format!("chore: {} {}", verb, first_file)
+        } else {
+            format!("chore: {} {} files", verb, files_changed)
+        };
+
+        Ok(msg)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

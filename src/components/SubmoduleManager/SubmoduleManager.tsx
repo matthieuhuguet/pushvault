@@ -19,10 +19,10 @@ interface SubmoduleManagerProps {
 type FormMode = "idle" | "add";
 
 const STATUS_COLOR: Record<string, string> = {
-  clean: "#1DB954",
-  not_init: "#535353",
-  modified: "#f59b00",
-  conflict: "#e5534b",
+  clean: "var(--color-success)",
+  not_init: "var(--color-text-disabled)",
+  modified: "var(--color-warning)",
+  conflict: "var(--color-error)",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -137,7 +137,7 @@ export function SubmoduleManager({ repoPath, onClose }: SubmoduleManagerProps) {
     background: "var(--overlay-soft)",
     border: "1px solid var(--overlay-medium)",
     borderRadius: "7px",
-    color: "#e0e0e0",
+    color: "var(--color-text-primary)",
     fontSize: "13px",
     fontFamily: "inherit",
     outline: "none",
@@ -161,7 +161,6 @@ export function SubmoduleManager({ repoPath, onClose }: SubmoduleManagerProps) {
         justifyContent: "center",
         zIndex: 850,
         padding: "24px",
-        animation: "fade-in 150ms ease both",
       }}
     >
       <div
@@ -197,7 +196,7 @@ export function SubmoduleManager({ repoPath, onClose }: SubmoduleManagerProps) {
             <p style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "2px", marginBottom: 0 }}>
               {submodules.length} submodule{submodules.length !== 1 ? "s" : ""}
               {hasUninitialized && <span style={{ color: "var(--color-text-disabled)" }}> · some not initialized</span>}
-              {hasModified && <span style={{ color: "#f59b00" }}> · some modified</span>}
+              {hasModified && <span style={{ color: "var(--color-warning)" }}> · some modified</span>}
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -210,10 +209,10 @@ export function SubmoduleManager({ repoPath, onClose }: SubmoduleManagerProps) {
                 alignItems: "center",
                 gap: "5px",
                 padding: "7px 12px",
-                background: updating ? "rgba(61,155,233,0.1)" : "rgba(61,155,233,0.12)",
-                border: "1px solid rgba(61,155,233,0.3)",
+                background: "var(--color-info-dim)",
+                border: "1px solid var(--color-info-border)",
                 borderRadius: "8px",
-                color: updating ? "rgba(61,155,233,0.5)" : "#3d9be9",
+                color: updating ? "var(--color-text-disabled)" : "var(--color-info)",
                 fontSize: "12px",
                 cursor: updating ? "not-allowed" : "pointer",
                 fontWeight: 600,
@@ -223,8 +222,8 @@ export function SubmoduleManager({ repoPath, onClose }: SubmoduleManagerProps) {
                 <span style={{
                   width: "11px",
                   height: "11px",
-                  border: "2px solid rgba(61,155,233,0.3)",
-                  borderTop: "2px solid #3d9be9",
+                  border: "2px solid var(--color-info-border)",
+                  borderTop: "2px solid var(--color-info)",
                   borderRadius: "50%",
                   animation: "spin 0.6s linear infinite",
                   display: "inline-block",
@@ -240,10 +239,10 @@ export function SubmoduleManager({ repoPath, onClose }: SubmoduleManagerProps) {
                 alignItems: "center",
                 gap: "5px",
                 padding: "7px 12px",
-                background: formMode === "add" ? "rgba(29,185,84,0.15)" : "var(--overlay-light)",
-                border: formMode === "add" ? "1px solid rgba(29,185,84,0.35)" : "1px solid var(--overlay-light)",
+                background: formMode === "add" ? "var(--color-accent-dim)" : "var(--overlay-light)",
+                border: formMode === "add" ? "1px solid var(--color-accent-border)" : "1px solid var(--overlay-light)",
                 borderRadius: "8px",
-                color: formMode === "add" ? "#1DB954" : "#b3b3b3",
+                color: formMode === "add" ? "var(--color-accent)" : "var(--color-text-secondary)",
                 fontSize: "12px",
                 cursor: "pointer",
                 fontWeight: 600,
@@ -311,7 +310,7 @@ export function SubmoduleManager({ repoPath, onClose }: SubmoduleManagerProps) {
                     placeholder="https://github.com/owner/repo.git"
                     style={inputStyle}
                     autoFocus
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.5)")}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-accent-border)")}
                     onBlur={(e) => (e.currentTarget.style.borderColor = "var(--overlay-medium)")}
                   />
                 </div>
@@ -324,7 +323,7 @@ export function SubmoduleManager({ repoPath, onClose }: SubmoduleManagerProps) {
                     onChange={(e) => setAddPath(e.target.value)}
                     placeholder="libs/my-lib"
                     style={inputStyle}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.5)")}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-accent-border)")}
                     onBlur={(e) => (e.currentTarget.style.borderColor = "var(--overlay-medium)")}
                   />
                 </div>
@@ -348,7 +347,7 @@ export function SubmoduleManager({ repoPath, onClose }: SubmoduleManagerProps) {
                     disabled={addBusy}
                     style={{
                       padding: "7px 14px",
-                      background: addBusy ? "rgba(29,185,84,0.3)" : "#1DB954",
+                      background: addBusy ? "var(--color-accent-dim)" : "var(--color-accent)",
                       border: "none",
                       borderRadius: "7px",
                       color: addBusy ? "rgba(0,0,0,0.4)" : "#000",
@@ -479,7 +478,7 @@ function SubmoduleRow({ sub, onRemove }: RowProps) {
           <span style={{
             fontSize: "13px",
             fontWeight: 600,
-            color: "#e0e0e0",
+            color: "var(--color-text-primary)",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",

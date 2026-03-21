@@ -15,7 +15,19 @@ const SHORTCUTS: Shortcut[] = [
   { key: "Ctrl+N", description: "Clone from URL", category: "Global" },
   { key: "Ctrl+P", description: "Open command palette", category: "Global" },
   { key: "Ctrl+/", description: "Show keyboard shortcuts", category: "Global" },
+  { key: "Ctrl+Shift+F", description: "Global search across repos", category: "Global" },
   { key: "Escape", description: "Close panel / modal", category: "Global" },
+  // Tab navigation
+  { key: "Alt+1", description: "Dashboard tab", category: "Tabs" },
+  { key: "Alt+2", description: "History tab", category: "Tabs" },
+  { key: "Alt+3", description: "Activity tab", category: "Tabs" },
+  { key: "Alt+4", description: "Settings tab", category: "Tabs" },
+  // Dashboard navigation
+  { key: "J / ↓", description: "Next repo", category: "Dashboard" },
+  { key: "K / ↑", description: "Previous repo", category: "Dashboard" },
+  { key: "Enter", description: "Open selected repo", category: "Dashboard" },
+  { key: "G", description: "Go to first repo", category: "Dashboard" },
+  { key: "Shift+G", description: "Go to last repo", category: "Dashboard" },
   // Staging area
   { key: "Ctrl+A", description: "Stage all modified files", category: "Staging" },
   { key: "Ctrl+Shift+U", description: "Unstage all files", category: "Staging" },
@@ -68,7 +80,6 @@ export function KeyboardHelp({ onClose }: KeyboardHelpProps) {
         justifyContent: "center",
         zIndex: 800,
         padding: "24px",
-        animation: "fade-in 150ms ease both",
       }}
     >
       <div

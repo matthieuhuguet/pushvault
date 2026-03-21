@@ -88,7 +88,6 @@ export function GitHubIssuesModal({ repoUrl, repoName, onClose }: GitHubIssuesMo
         justifyContent: "center",
         zIndex: 900,
         padding: "24px",
-        animation: "fade-in 150ms ease both",
       }}
     >
       <div
@@ -187,7 +186,7 @@ export function GitHubIssuesModal({ repoUrl, repoName, onClose }: GitHubIssuesMo
           {loading && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "48px", gap: "10px", color: "var(--color-text-muted)" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 0.8s linear infinite" }}>
-                <circle cx="12" cy="12" r="10" stroke="#333" strokeWidth="3" />
+                <circle cx="12" cy="12" r="10" stroke="var(--overlay-medium)" strokeWidth="3" />
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="#e57a3b" strokeWidth="3" strokeLinecap="round" />
               </svg>
               Loading issues…
@@ -195,7 +194,7 @@ export function GitHubIssuesModal({ repoUrl, repoName, onClose }: GitHubIssuesMo
           )}
 
           {error && (
-            <div style={{ padding: "32px", textAlign: "center", color: "#e5534b", fontSize: "13px" }}>
+            <div style={{ padding: "32px", textAlign: "center", color: "var(--color-error)", fontSize: "13px" }}>
               <p style={{ fontWeight: 600 }}>Failed to load issues</p>
               <p style={{ color: "var(--color-text-disabled)", marginTop: "8px" }}>{error}</p>
               {!token && (
@@ -209,9 +208,9 @@ export function GitHubIssuesModal({ repoUrl, repoName, onClose }: GitHubIssuesMo
           {!loading && !error && issues.length === 0 && (
             <div style={{ padding: "48px", textAlign: "center", color: "var(--color-text-disabled)", fontSize: "13px" }}>
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style={{ display: "block", margin: "0 auto 12px", opacity: 0.3 }}>
-                <circle cx="12" cy="12" r="10" stroke="#b3b3b3" strokeWidth="2" />
-                <line x1="12" y1="8" x2="12" y2="12" stroke="#b3b3b3" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="12" cy="16" r="0.5" fill="#b3b3b3" stroke="#b3b3b3" strokeWidth="1.5" />
+                <circle cx="12" cy="12" r="10" stroke="var(--color-text-secondary)" strokeWidth="2" />
+                <line x1="12" y1="8" x2="12" y2="12" stroke="var(--color-text-secondary)" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="12" cy="16" r="0.5" fill="var(--color-text-secondary)" stroke="var(--color-text-secondary)" strokeWidth="1.5" />
               </svg>
               No {filter} issues
             </div>
@@ -219,7 +218,7 @@ export function GitHubIssuesModal({ repoUrl, repoName, onClose }: GitHubIssuesMo
 
           {!loading && !error && issues.map((issue) => {
             const isOpen = issue.state === "open";
-            const dotColor = isOpen ? "#1DB954" : "#535353";
+            const dotColor = isOpen ? "var(--color-success)" : "var(--color-text-disabled)";
             return (
               <div
                 key={issue.number}

@@ -139,7 +139,7 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
     background: "var(--overlay-soft)",
     border: "1px solid var(--overlay-medium)",
     borderRadius: "7px",
-    color: "#e0e0e0",
+    color: "var(--color-text-primary)",
     fontSize: "13px",
     fontFamily: "inherit",
     outline: "none",
@@ -160,7 +160,6 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
         justifyContent: "center",
         zIndex: 850,
         padding: "24px",
-        animation: "fade-in 150ms ease both",
       }}
     >
       <div
@@ -205,10 +204,10 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
                 alignItems: "center",
                 gap: "5px",
                 padding: "7px 12px",
-                background: formMode === "add" ? "rgba(29,185,84,0.15)" : "var(--overlay-light)",
-                border: formMode === "add" ? "1px solid rgba(29,185,84,0.35)" : "1px solid var(--overlay-light)",
+                background: formMode === "add" ? "var(--color-accent-dim)" : "var(--overlay-light)",
+                border: formMode === "add" ? "1px solid var(--color-success-border)" : "1px solid var(--overlay-light)",
                 borderRadius: "8px",
-                color: formMode === "add" ? "#1DB954" : "#b3b3b3",
+                color: formMode === "add" ? "var(--color-accent)" : "var(--color-text-secondary)",
                 fontSize: "12px",
                 cursor: "pointer",
                 fontWeight: 600,
@@ -312,7 +311,7 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
                       height: "15px",
                       borderRadius: "4px",
                       border: addNewBranch ? "none" : "1px solid var(--overlay-vivid)",
-                      background: addNewBranch ? "#1DB954" : "transparent",
+                      background: addNewBranch ? "var(--color-accent)" : "transparent",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -325,7 +324,7 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
                         </svg>
                       )}
                     </div>
-                    <span style={{ fontSize: "12px", color: addNewBranch ? "#e0e0e0" : "#6a6a6a" }}>
+                    <span style={{ fontSize: "12px", color: addNewBranch ? "var(--color-text-primary)" : "var(--color-text-disabled)" }}>
                       Create new branch (<code style={{ fontSize: "11px" }}>-b</code>)
                     </span>
                   </label>
@@ -352,7 +351,7 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
                     disabled={addBusy}
                     style={{
                       padding: "7px 14px",
-                      background: addBusy ? "rgba(29,185,84,0.3)" : "#1DB954",
+                      background: addBusy ? "var(--color-success-border)" : "var(--color-accent)",
                       border: "none",
                       borderRadius: "7px",
                       color: addBusy ? "rgba(0,0,0,0.4)" : "#000",
@@ -391,11 +390,11 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
             {error && (
               <div style={{
                 padding: "10px 14px",
-                background: "rgba(229,83,75,0.1)",
-                border: "1px solid rgba(229,83,75,0.3)",
+                background: "var(--color-error-dim)",
+                border: "1px solid var(--color-error-border)",
                 borderRadius: "8px",
                 fontSize: "12px",
-                color: "#e5534b",
+                color: "var(--color-error)",
                 margin: "8px",
               }}>
                 {error}
@@ -424,7 +423,7 @@ export function WorktreeManager({ repoPath, onClose }: WorktreeManagerProps) {
             padding: "10px 24px 14px",
             borderTop: "1px solid var(--overlay-soft)",
           }}>
-            <p style={{ fontSize: "11px", color: "#3a3a3a", margin: 0 }}>
+            <p style={{ fontSize: "11px", color: "var(--color-text-disabled)", margin: 0 }}>
               Worktrees let you check out multiple branches simultaneously in separate directories.
               The main worktree cannot be removed.
             </p>
@@ -469,7 +468,7 @@ function WorktreeRow({ wt, onRemove, onOpenExplorer, onOpenTerminal }: RowProps)
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
             <path
               d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
-              stroke={wt.is_main ? "#1DB954" : "#6a6a6a"}
+              stroke={wt.is_main ? "var(--color-accent)" : "var(--color-text-disabled)"}
               strokeWidth="1.8"
               strokeLinejoin="round"
             />
@@ -477,7 +476,7 @@ function WorktreeRow({ wt, onRemove, onOpenExplorer, onOpenTerminal }: RowProps)
           <span style={{
             fontSize: "13px",
             fontWeight: 600,
-            color: wt.is_main ? "#e0e0e0" : "#b3b3b3",
+            color: wt.is_main ? "var(--color-text-primary)" : "var(--color-text-secondary)",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -488,8 +487,8 @@ function WorktreeRow({ wt, onRemove, onOpenExplorer, onOpenTerminal }: RowProps)
             <span style={{
               fontSize: "10px",
               padding: "1px 6px",
-              background: "rgba(29,185,84,0.12)",
-              color: "#1DB954",
+              background: "var(--color-success-dim)",
+              color: "var(--color-accent)",
               borderRadius: "8px",
               fontWeight: 700,
               flexShrink: 0,
@@ -501,8 +500,8 @@ function WorktreeRow({ wt, onRemove, onOpenExplorer, onOpenTerminal }: RowProps)
             <span style={{
               fontSize: "10px",
               padding: "1px 6px",
-              background: "rgba(245,155,0,0.12)",
-              color: "#f59b00",
+              background: "var(--color-warning-dim)",
+              color: "var(--color-warning)",
               borderRadius: "8px",
               flexShrink: 0,
             }}>
@@ -513,8 +512,8 @@ function WorktreeRow({ wt, onRemove, onOpenExplorer, onOpenTerminal }: RowProps)
             <span style={{
               fontSize: "10px",
               padding: "1px 6px",
-              background: "rgba(229,83,75,0.12)",
-              color: "#e5534b",
+              background: "var(--color-error-dim)",
+              color: "var(--color-error)",
               borderRadius: "8px",
               flexShrink: 0,
             }}>

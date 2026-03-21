@@ -4,13 +4,13 @@
 
 /* ── CSS Custom Properties ─────────────────────────────────── */
 :root {
-  /* Backgrounds */
-  --color-bg-base: #000000;
-  --color-bg-primary: #121212;
-  --color-bg-card: #181818;
-  --color-bg-elevated: #282828;
-  --color-bg-highlight: #333333;
-  --color-bg-hover: #2a2a2a;
+  /* Backgrounds — semi-transparent for Windows 11 Mica bleed-through */
+  --color-bg-base: rgba(0, 0, 0, 0.85);
+  --color-bg-primary: rgba(18, 18, 18, 0.88);
+  --color-bg-card: rgba(24, 24, 24, 0.92);
+  --color-bg-elevated: rgba(40, 40, 40, 0.95);
+  --color-bg-highlight: rgba(51, 51, 51, 0.95);
+  --color-bg-hover: rgba(42, 42, 42, 0.95);
 
   /* Accent */
   --color-accent: #1db954;
@@ -103,6 +103,33 @@
   --overlay-divider: rgba(255, 255, 255, 0.06);
   --color-icon-default: rgba(255, 255, 255, 0.9);
 
+  /* Diff colours */
+  --diff-add-bg: rgba(29, 185, 84, 0.08);
+  --diff-add-bg-strong: rgba(29, 185, 84, 0.15);
+  --diff-add-text: #b6f5c8;
+  --diff-remove-bg: rgba(229, 83, 75, 0.08);
+  --diff-remove-bg-strong: rgba(229, 83, 75, 0.15);
+  --diff-remove-text: #ffb3ae;
+  --diff-hunk-bg: rgba(61, 155, 233, 0.08);
+  --diff-hunk-text: #3d9be9;
+  --diff-context-text: #e0e0e0;
+  --diff-minimap-bg: #1a1a1a;
+  --diff-minimap-context: #232323;
+
+  /* Semantic dim backgrounds */
+  --color-success-dim: rgba(29, 185, 84, 0.12);
+  --color-success-border: rgba(29, 185, 84, 0.3);
+  --color-error-dim: rgba(229, 83, 75, 0.12);
+  --color-error-border: rgba(229, 83, 75, 0.3);
+  --color-warning-dim: rgba(245, 166, 35, 0.12);
+  --color-warning-border: rgba(245, 166, 35, 0.3);
+  --color-info-dim: rgba(61, 155, 233, 0.1);
+  --color-info-border: rgba(61, 155, 233, 0.3);
+
+  /* Button disabled states */
+  --color-btn-disabled-bg: #282828;
+  --color-btn-disabled-text: #535353;
+
   /* Slider range style */
   --range-filled: #1db954;
   --range-track: rgba(255, 255, 255, 0.12);
@@ -158,6 +185,33 @@
   --overlay-backdrop-light: rgba(0, 0, 0, 0.3);
   --overlay-divider: rgba(0, 0, 0, 0.06);
   --color-icon-default: rgba(0, 0, 0, 0.75);
+
+  /* Diff colours */
+  --diff-add-bg: rgba(26, 163, 74, 0.08);
+  --diff-add-bg-strong: rgba(26, 163, 74, 0.18);
+  --diff-add-text: #116329;
+  --diff-remove-bg: rgba(209, 57, 47, 0.08);
+  --diff-remove-bg-strong: rgba(209, 57, 47, 0.18);
+  --diff-remove-text: #82071e;
+  --diff-hunk-bg: rgba(43, 127, 212, 0.08);
+  --diff-hunk-text: #2b7fd4;
+  --diff-context-text: #1a1a1a;
+  --diff-minimap-bg: #eaeaea;
+  --diff-minimap-context: #e0e0e0;
+
+  /* Semantic dim backgrounds */
+  --color-success-dim: rgba(26, 163, 74, 0.1);
+  --color-success-border: rgba(26, 163, 74, 0.3);
+  --color-error-dim: rgba(209, 57, 47, 0.1);
+  --color-error-border: rgba(209, 57, 47, 0.3);
+  --color-warning-dim: rgba(208, 135, 0, 0.1);
+  --color-warning-border: rgba(208, 135, 0, 0.3);
+  --color-info-dim: rgba(43, 127, 212, 0.08);
+  --color-info-border: rgba(43, 127, 212, 0.3);
+
+  /* Button disabled states */
+  --color-btn-disabled-bg: #e0e0e0;
+  --color-btn-disabled-text: #aaaaaa;
 
   --range-filled: #1aa34a;
   --range-track: rgba(0, 0, 0, 0.12);
@@ -399,6 +453,48 @@ button:disabled {
   animation: slide-in-right var(--transition-base) ease both;
 }
 
+/* ── Panel overlay slide-in ────────────────────────────────── */
+@keyframes panel-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+    backdrop-filter: blur(20px);
+  }
+}
+
+@keyframes panel-slide-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(24px); }
+}
+
+@keyframes panel-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.panel-overlay-enter {
+  animation: panel-slide-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.panel-backdrop-enter {
+  animation: panel-backdrop-in 200ms ease both;
+}
+
+/* ── Scale-in for modals ───────────────────────────────────── */
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.scale-in {
+  animation: scale-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* ── Slide-in from bottom ───────────────────────────────────── */
 @keyframes slide-in-bottom {
   from { opacity: 0; transform: translateY(12px); }
@@ -528,4 +624,14 @@ button:disabled {
 ::selection {
   background: var(--color-accent-dim);
   color: var(--color-text-primary);
+}
+
+/* ── Reduced motion ────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

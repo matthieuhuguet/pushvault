@@ -70,7 +70,7 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
         path: fullPath,
         remote: url.trim(),
         icon: "folder",
-        color: "#1DB954",
+        color: "var(--color-accent)",
       });
 
       addToast("success", `Cloned "${repoName || url}" successfully`);
@@ -86,32 +86,33 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
 
   return (
     <div
+      className="panel-backdrop-enter"
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.75)",
-        backdropFilter: "blur(4px)",
+        background: "rgba(0,0,0,0.6)",
+        backdropFilter: "blur(12px) saturate(1.2)",
+        WebkitBackdropFilter: "blur(12px) saturate(1.2)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 700,
         padding: "24px",
-        animation: "fade-in 150ms ease both",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
+        className="scale-in"
         style={{
           width: "520px",
           maxWidth: "100%",
           background: "var(--color-bg-elevated)",
           borderRadius: "16px",
           border: "1px solid var(--color-border)",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.8)",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px var(--overlay-subtle)",
           overflow: "hidden",
-          animation: "slide-in-bottom 200ms ease both",
         }}
       >
         {/* Header */}
@@ -189,14 +190,14 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
               style={{
                 width: "100%",
                 background: "var(--color-bg-card)",
-                border: `1px solid ${urlFocused ? "#1DB954" : "var(--overlay-light)"}`,
+                border: `1px solid ${urlFocused ? "var(--color-accent)" : "var(--overlay-light)"}`,
                 borderRadius: "8px",
                 color: "var(--color-text-primary)",
                 fontSize: "13px",
                 padding: "10px 14px",
                 outline: "none",
                 transition: "border-color 150ms ease",
-                boxShadow: urlFocused ? "0 0 0 2px rgba(29,185,84,0.12)" : "none",
+                boxShadow: urlFocused ? "0 0 0 2px var(--color-success-dim)" : "none",
               }}
             />
           </div>
@@ -226,14 +227,14 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
                 style={{
                   flex: 1,
                   background: "var(--color-bg-card)",
-                  border: `1px solid ${destFocused ? "#1DB954" : "var(--overlay-light)"}`,
+                  border: `1px solid ${destFocused ? "var(--color-accent)" : "var(--overlay-light)"}`,
                   borderRadius: "8px",
                   color: "var(--color-text-primary)",
                   fontSize: "13px",
                   padding: "10px 14px",
                   outline: "none",
                   transition: "border-color 150ms ease",
-                  boxShadow: destFocused ? "0 0 0 2px rgba(29,185,84,0.12)" : "none",
+                  boxShadow: destFocused ? "0 0 0 2px var(--color-success-dim)" : "none",
                   minWidth: 0,
                 }}
               />
@@ -274,14 +275,14 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
                 alignItems: "center",
                 gap: "8px",
                 padding: "8px 12px",
-                background: "rgba(29,185,84,0.08)",
-                border: "1px solid rgba(29,185,84,0.2)",
+                background: "var(--color-success-dim)",
+                border: "1px solid var(--color-success-border)",
                 borderRadius: "8px",
                 marginBottom: "16px",
               }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="#1DB954" strokeWidth="1.8" strokeLinejoin="round" />
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="var(--color-accent)" strokeWidth="1.8" strokeLinejoin="round" />
               </svg>
               <span style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
                 Will clone as:{" "}
@@ -300,16 +301,16 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
                 alignItems: "center",
                 gap: "10px",
                 padding: "10px 12px",
-                background: "rgba(29,185,84,0.08)",
+                background: "var(--color-success-dim)",
                 borderRadius: "8px",
                 marginBottom: "16px",
               }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 0.8s linear infinite", flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10" stroke="#333" strokeWidth="3" />
-                <path d="M12 2a10 10 0 0 1 10 10" stroke="#1DB954" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="12" cy="12" r="10" stroke="var(--color-border)" strokeWidth="3" />
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="var(--color-accent)" strokeWidth="3" strokeLinecap="round" />
               </svg>
-              <span style={{ fontSize: "13px", color: "#1DB954" }}>
+              <span style={{ fontSize: "13px", color: "var(--color-accent)" }}>
                 {progress}
               </span>
             </div>
@@ -350,7 +351,7 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
               disabled={!isValid || cloning}
               style={{
                 padding: "10px 24px",
-                background: !isValid || cloning ? "rgba(29,185,84,0.3)" : "#1DB954",
+                background: !isValid || cloning ? "var(--color-success-border)" : "var(--color-accent)",
                 color: "#000",
                 border: "none",
                 borderRadius: "20px",
@@ -358,17 +359,17 @@ export function CloneDialog({ onClose }: CloneDialogProps) {
                 fontWeight: 700,
                 cursor: !isValid || cloning ? "not-allowed" : "pointer",
                 transition: "all 150ms ease",
-                boxShadow: !isValid || cloning ? "none" : "0 4px 16px rgba(29,185,84,0.3)",
+                boxShadow: !isValid || cloning ? "none" : "0 4px 16px var(--color-accent-dim)",
               }}
               onMouseEnter={(e) => {
                 if (isValid && !cloning) {
-                  (e.currentTarget as HTMLButtonElement).style.background = "#1ed760";
+                  (e.currentTarget as HTMLButtonElement).style.background = "var(--color-accent-hover)";
                   (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.03)";
                 }
               }}
               onMouseLeave={(e) => {
                 if (isValid && !cloning) {
-                  (e.currentTarget as HTMLButtonElement).style.background = "#1DB954";
+                  (e.currentTarget as HTMLButtonElement).style.background = "var(--color-accent)";
                   (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
                 }
               }}

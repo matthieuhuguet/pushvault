@@ -28,10 +28,10 @@ function formatDate(iso: string): string {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  success: "#1DB954",
-  failure: "#e5534b",
-  in_progress: "#f59b00",
-  unknown: "#535353",
+  success: "var(--color-success)",
+  failure: "var(--color-error)",
+  in_progress: "var(--color-warning)",
+  unknown: "var(--color-text-disabled)",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -77,7 +77,6 @@ export function WorkflowRunsModal({ repoUrl, repoName, onClose }: WorkflowRunsMo
         justifyContent: "center",
         zIndex: 900,
         padding: "24px",
-        animation: "fade-in 150ms ease both",
       }}
     >
       <div
@@ -108,8 +107,8 @@ export function WorkflowRunsModal({ repoUrl, repoName, onClose }: WorkflowRunsMo
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="#f59b00" strokeWidth="2" />
-              <polyline points="12 6 12 12 16 14" stroke="#f59b00" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="12" cy="12" r="10" stroke="var(--color-warning)" strokeWidth="2" />
+              <polyline points="12 6 12 12 16 14" stroke="var(--color-warning)" strokeWidth="2" strokeLinecap="round" />
             </svg>
             <div>
               <h2 style={{ fontSize: "15px", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>
@@ -154,14 +153,14 @@ export function WorkflowRunsModal({ repoUrl, repoName, onClose }: WorkflowRunsMo
           {loading && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "48px", gap: "10px", color: "var(--color-text-muted)" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 0.8s linear infinite" }}>
-                <circle cx="12" cy="12" r="10" stroke="#333" strokeWidth="3" />
-                <path d="M12 2a10 10 0 0 1 10 10" stroke="#f59b00" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="12" cy="12" r="10" stroke="var(--overlay-medium)" strokeWidth="3" />
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="var(--color-warning)" strokeWidth="3" strokeLinecap="round" />
               </svg>
               Loading runs…
             </div>
           )}
           {error && (
-            <div style={{ padding: "32px", textAlign: "center", color: "#e5534b", fontSize: "13px" }}>
+            <div style={{ padding: "32px", textAlign: "center", color: "var(--color-error)", fontSize: "13px" }}>
               <p style={{ fontWeight: 600 }}>Failed to load workflow runs</p>
               <p style={{ color: "var(--color-text-disabled)", marginTop: "8px" }}>{error}</p>
               {!token && (
@@ -177,7 +176,7 @@ export function WorkflowRunsModal({ repoUrl, repoName, onClose }: WorkflowRunsMo
             </div>
           )}
           {!loading && !error && runs.map((run) => {
-            const color = STATUS_COLOR[run.status] ?? "#535353";
+            const color = STATUS_COLOR[run.status] ?? "var(--color-text-disabled)";
             return (
               <a
                 key={run.id}

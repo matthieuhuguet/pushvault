@@ -21,8 +21,9 @@ fn git_cmd() -> Command {
 
 use crate::error::PvError;
 use crate::models::{
-    BisectInfo, BranchInfo, CommitInfo, ConflictFile, DiffResult, FileEntry, RepoStatus, StashEntry,
-    SubmoduleInfo, SyncResult, SyncState, TagInfo, WorktreeInfo,
+    BisectInfo, BlameLine, BranchInfo, CommitInfo, ConflictFile, DiffResult, FileEntry,
+    ReflogEntry, RepoStatus, StashEntry, SubmoduleInfo, SyncResult, SyncState, TagInfo,
+    WorktreeInfo,
 };
 
 // ---------------------------------------------------------------------------
@@ -31,20 +32,49 @@ use crate::models::{
 
 fn make_callbacks<'a>() -> git2::RemoteCallbacks<'a> {
     let mut callbacks = git2::RemoteCallbacks::new();
-    callbacks.credentials(|_url, username_from_url, allowed_types| {
+    callbacks.credentials(|url, username_from_url, allowed_types| {
+        let username = username_from_url.unwrap_or("git");
+
+        // 1. SSH key via agent (most common for git@github.com repos)
         if allowed_types.contains(git2::CredentialType::SSH_KEY) {
-            let username = username_from_url.unwrap_or("git");
-            git2::Cred::ssh_key_from_agent(username)
-        } else if allowed_types.contains(git2::CredentialType::USER_PASS_PLAINTEXT) {
-            git2::Cred::credential_helper(
-                &git2::Config::open_default()?,
-                _url,
-                username_from_url,
-            )
-            .or_else(|_| git2::Cred::default())
-        } else {
-            git2::Cred::default()
+            if let Ok(cred) = git2::Cred::ssh_key_from_agent(username) {
+                return Ok(cred);
+            }
+            // Try default SSH key paths
+            let home = std::env::var("USERPROFILE")
+                .or_else(|_| std::env::var("HOME"))
+                .unwrap_or_default();
+            let key_path = std::path::Path::new(&home).join(".ssh").join("id_ed25519");
+            let key_rsa = std::path::Path::new(&home).join(".ssh").join("id_rsa");
+            let actual_key = if key_path.exists() {
+                Some(key_path)
+            } else if key_rsa.exists() {
+                Some(key_rsa)
+            } else {
+                None
+            };
+            if let Some(key) = actual_key {
+                let pubkey = key.with_extension("pub");
+                let pub_path = if pubkey.exists() { Some(pubkey.as_path()) } else { None };
+                if let Ok(cred) = git2::Cred::ssh_key(username, pub_path, &key, None) {
+                    return Ok(cred);
+                }
+            }
         }
+
+        // 2. Credential helper (git credential-manager, wincred, etc.)
+        if allowed_types.contains(git2::CredentialType::USER_PASS_PLAINTEXT) {
+            if let Ok(cred) = git2::Cred::credential_helper(
+                &git2::Config::open_default()?,
+                url,
+                username_from_url,
+            ) {
+                return Ok(cred);
+            }
+        }
+
+        // 3. Final fallback
+        git2::Cred::default()
     });
     callbacks
 }
@@ -133,13 +163,20 @@ fn parse_porcelain_v2(repo_path: &str) -> PortcelainV2 {
 fn relative_time(ts: i64) -> String {
     let now = Utc::now().timestamp();
     let diff = now - ts;
+    let plural = |n: i64, unit: &str| -> String {
+        if n == 1 {
+            format!("1 {} ago", unit)
+        } else {
+            format!("{} {}s ago", n, unit)
+        }
+    };
     match diff {
         d if d < 60 => "just now".into(),
-        d if d < 3600 => format!("{} minutes ago", d / 60),
-        d if d < 86400 => format!("{} hours ago", d / 3600),
-        d if d < 604800 => format!("{} days ago", d / 86400),
-        d if d < 2592000 => format!("{} weeks ago", d / 604800),
-        d => format!("{} months ago", d / 2592000),
+        d if d < 3600 => plural(d / 60, "minute"),
+        d if d < 86400 => plural(d / 3600, "hour"),
+        d if d < 604800 => plural(d / 86400, "day"),
+        d if d < 2592000 => plural(d / 604800, "week"),
+        d => plural(d / 2592000, "month"),
     }
 }
 
@@ -326,13 +363,79 @@ fn normal_merge(
     Ok(())
 }
 
-pub async fn push_repo(repo_path: String, message: String) -> Result<String, PvError> {
-    // stage all, commit, push
-    let rp = repo_path.clone();
-    let msg = message.clone();
-    stage_all(rp.clone()).await?;
-    commit(rp.clone(), msg, false).await?;
-    push_to_remote(rp).await
+/// Push the current branch to its remote. Does NOT stage or commit.
+pub async fn push_repo(repo_path: String) -> Result<String, PvError> {
+    push_to_remote(repo_path).await
+}
+
+/// Push using git CLI subprocess as fallback (handles credential managers
+/// that libgit2 can't talk to, e.g. Git Credential Manager on Windows).
+pub async fn push_cli(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let output = git_cmd()
+            .args(["push"])
+            .current_dir(&repo_path)
+            .output()
+            .map_err(PvError::Io)?;
+        if output.status.success() {
+            let out = String::from_utf8_lossy(&output.stdout).to_string();
+            let err = String::from_utf8_lossy(&output.stderr).to_string();
+            Ok(format!("{}{}", out.trim(), err.trim()))
+        } else {
+            Err(PvError::Config(
+                String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            ))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Pull using git CLI subprocess (handles rebase, credential managers).
+pub async fn pull_cli(repo_path: String, rebase: bool) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let mut args = vec!["pull".to_string()];
+        if rebase {
+            args.push("--rebase".into());
+        }
+        let output = git_cmd()
+            .args(&args)
+            .current_dir(&repo_path)
+            .output()
+            .map_err(PvError::Io)?;
+        if output.status.success() {
+            let out = String::from_utf8_lossy(&output.stdout).to_string();
+            Ok(out.trim().to_string())
+        } else {
+            Err(PvError::Config(
+                String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            ))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+/// Force push with --force-with-lease (safer than raw force push).
+pub async fn force_push_with_lease(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let output = git_cmd()
+            .args(["push", "--force-with-lease"])
+            .current_dir(&repo_path)
+            .output()
+            .map_err(PvError::Io)?;
+        if output.status.success() {
+            let out = String::from_utf8_lossy(&output.stdout).to_string();
+            let err = String::from_utf8_lossy(&output.stderr).to_string();
+            Ok(format!("Force push (with lease) succeeded. {}{}", out.trim(), err.trim()))
+        } else {
+            Err(PvError::Config(
+                String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            ))
+        }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
 }
 
 async fn push_to_remote(repo_path: String) -> Result<String, PvError> {
@@ -357,6 +460,32 @@ async fn push_to_remote(repo_path: String) -> Result<String, PvError> {
     .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
 }
 
+/// Force push the current branch. Returns a description of what happened.
+pub async fn force_push(repo_path: String) -> Result<String, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)
+            .map_err(|_| PvError::NotGitRepo(repo_path.clone()))?;
+
+        let remote_name = get_default_remote(&repo);
+        let mut remote = repo.find_remote(&remote_name)?;
+
+        let head = repo.head()?;
+        let branch = head.shorthand().unwrap_or("main").to_string();
+        let refspec = format!("+refs/heads/{}:refs/heads/{}", branch, branch);
+
+        let mut po = git2::PushOptions::new();
+        po.remote_callbacks(make_callbacks());
+        remote.push(&[&refspec], Some(&mut po))?;
+
+        Ok(format!(
+            "Force pushed branch '{}' to '{}'",
+            branch, remote_name
+        ))
+    })
+    .await
+    .map_err(|e| PvError::Git(git2::Error::from_str(&e.to_string())))?
+}
+
 pub async fn sync_repo(repo_path: String, message: String) -> Result<SyncResult, PvError> {
     let status = get_repo_status(repo_path.clone()).await?;
 
@@ -364,49 +493,90 @@ pub async fn sync_repo(repo_path: String, message: String) -> Result<SyncResult,
     let mut pulled = false;
     let mut messages: Vec<String> = Vec::new();
 
-    // Pull first if behind
+    // Step 1: If there are uncommitted changes, stage & commit them
+    let has_local_changes = status.staged > 0 || status.modified > 0 || status.untracked > 0;
+    if has_local_changes {
+        let commit_msg = if message.is_empty() {
+            "chore: sync via PushVault".to_string()
+        } else {
+            message.clone()
+        };
+        // Stage all + commit
+        if let Err(e) = stage_all(repo_path.clone()).await {
+            return Ok(SyncResult {
+                path: repo_path,
+                success: false,
+                message: format!("Stage failed: {}", e),
+                pushed: false,
+                pulled: false,
+            });
+        }
+        if let Err(e) = commit(repo_path.clone(), commit_msg, false).await {
+            return Ok(SyncResult {
+                path: repo_path,
+                success: false,
+                message: format!("Commit failed: {}", e),
+                pushed: false,
+                pulled: false,
+            });
+        }
+        messages.push("Committed local changes".into());
+    }
+
+    // Step 2: Pull if behind (try libgit2 first, fall back to CLI)
     if status.behind > 0 {
         match pull_repo(repo_path.clone()).await {
             Ok(msg) => {
                 pulled = true;
                 messages.push(msg);
             }
-            Err(e) => {
-                return Ok(SyncResult {
-                    path: repo_path,
-                    success: false,
-                    message: format!("Pull failed: {}", e),
-                    pushed: false,
-                    pulled: false,
-                });
+            Err(_) => {
+                // Fall back to git CLI pull
+                match pull_cli(repo_path.clone(), false).await {
+                    Ok(msg) => {
+                        pulled = true;
+                        messages.push(format!("Pulled (CLI): {}", msg));
+                    }
+                    Err(e) => {
+                        return Ok(SyncResult {
+                            path: repo_path,
+                            success: false,
+                            message: format!("Pull failed: {}", e),
+                            pushed: false,
+                            pulled: false,
+                        });
+                    }
+                }
             }
         }
     }
 
-    // Push if there are local changes or we're ahead
-    if status.staged > 0
-        || status.modified > 0
-        || status.untracked > 0
-        || status.ahead > 0
-    {
-        let push_msg = if message.is_empty() {
-            "chore: sync via PushVault".to_string()
-        } else {
-            message
-        };
-        match push_repo(repo_path.clone(), push_msg).await {
+    // Step 3: Push if ahead or we just committed
+    // Re-check status after pull to get accurate ahead count
+    let post_status = get_repo_status(repo_path.clone()).await?;
+    if post_status.ahead > 0 || has_local_changes {
+        match push_to_remote(repo_path.clone()).await {
             Ok(msg) => {
                 pushed = true;
                 messages.push(msg);
             }
-            Err(e) => {
-                return Ok(SyncResult {
-                    path: repo_path,
-                    success: false,
-                    message: format!("Push failed: {}", e),
-                    pushed: false,
-                    pulled,
-                });
+            Err(_) => {
+                // Fall back to git CLI push
+                match push_cli(repo_path.clone()).await {
+                    Ok(msg) => {
+                        pushed = true;
+                        messages.push(format!("Pushed (CLI): {}", msg));
+                    }
+                    Err(e) => {
+                        return Ok(SyncResult {
+                            path: repo_path,
+                            success: false,
+                            message: format!("Push failed: {}", e),
+                            pushed: false,
+                            pulled,
+                        });
+                    }
+                }
             }
         }
     }
@@ -904,6 +1074,10 @@ pub async fn get_log(repo_path: String, limit: u32) -> Result<Vec<CommitInfo>, P
                 (0, 0, 0)
             };
 
+            let parent_hashes: Vec<String> = (0..commit.parent_count())
+                .filter_map(|i| commit.parent_id(i).ok().map(|id| id.to_string()))
+                .collect();
+
             commits.push(CommitInfo {
                 hash,
                 short_hash,
@@ -915,6 +1089,7 @@ pub async fn get_log(repo_path: String, limit: u32) -> Result<Vec<CommitInfo>, P
                 insertions,
                 deletions,
                 files_changed,
+                parent_hashes,
             });
         }
 
@@ -2812,6 +2987,120 @@ pub async fn bisect_reset(repo_path: String) -> Result<String, PvError> {
         } else {
             Err(PvError::Config(String::from_utf8_lossy(&output.stderr).to_string()))
         }
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+// ---------------------------------------------------------------------------
+// Git Blame
+// ---------------------------------------------------------------------------
+
+pub async fn git_blame(
+    repo_path: String,
+    file_path: String,
+) -> Result<Vec<BlameLine>, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)?;
+        let blame = repo
+            .blame_file(Path::new(&file_path), None)?;
+
+        // Read current file content to pair with blame hunks
+        let full_path = Path::new(&repo_path).join(&file_path);
+        let content = std::fs::read_to_string(&full_path)
+            .unwrap_or_default();
+        let lines: Vec<&str> = content.lines().collect();
+
+        let mut result = Vec::new();
+        for (i, line_text) in lines.iter().enumerate() {
+            let line_no = (i + 1) as u32;
+            if let Some(hunk) = blame.get_line(line_no as usize) {
+                let oid = hunk.final_commit_id();
+                let short = &oid.to_string()[..8];
+                let sig = hunk.final_signature();
+                let author = sig.name().unwrap_or("Unknown").to_string();
+                let time = sig.when();
+                let secs = time.seconds();
+                let dt: DateTime<Utc> = Utc.timestamp_opt(secs, 0)
+                    .single()
+                    .unwrap_or_else(Utc::now);
+                let date = dt.format("%Y-%m-%d").to_string();
+
+                let summary = repo
+                    .find_commit(oid)
+                    .ok()
+                    .and_then(|c| c.summary().map(|s| s.to_string()))
+                    .unwrap_or_default();
+
+                result.push(BlameLine {
+                    line_no,
+                    content: line_text.to_string(),
+                    commit_hash: oid.to_string(),
+                    short_hash: short.to_string(),
+                    author,
+                    date,
+                    summary,
+                });
+            }
+        }
+
+        Ok(result)
+    })
+    .await
+    .map_err(|e| PvError::Config(e.to_string()))?
+}
+
+// ---------------------------------------------------------------------------
+// Git Reflog
+// ---------------------------------------------------------------------------
+
+pub async fn git_reflog(
+    repo_path: String,
+    limit: u32,
+) -> Result<Vec<ReflogEntry>, PvError> {
+    tokio::task::spawn_blocking(move || {
+        let repo = Repository::open(&repo_path)?;
+        let mut entries = Vec::new();
+        let reflog = repo
+            .reflog("HEAD")?;
+
+        let count = reflog.len().min(limit as usize);
+        for i in 0..count {
+            if let Some(entry) = reflog.get(i) {
+                let oid = entry.id_new();
+                let short = &oid.to_string()[..8];
+                let msg = entry.message().unwrap_or("").to_string();
+
+                let action = msg
+                    .split(':')
+                    .next()
+                    .unwrap_or("unknown")
+                    .trim()
+                    .to_string();
+                let message = msg
+                    .split_once(':')
+                    .map(|(_, rest)| rest.trim().to_string())
+                    .unwrap_or_else(|| msg.clone());
+
+                let sig = entry.committer();
+                let secs = sig.when().seconds();
+                let dt: DateTime<Utc> = Utc.timestamp_opt(secs, 0)
+                    .single()
+                    .unwrap_or_else(Utc::now);
+                let date = dt.format("%Y-%m-%d %H:%M").to_string();
+
+                entries.push(ReflogEntry {
+                    index: i as u32,
+                    hash: oid.to_string(),
+                    short_hash: short.to_string(),
+                    action,
+                    message,
+                    date,
+                });
+            }
+        }
+
+        Ok(entries)
     })
     .await
     .map_err(|e| PvError::Config(e.to_string()))?

@@ -2,6 +2,236 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { DiffResult } from "../../types";
 import { ipc } from "../../lib/ipc";
 
+/* ── Image file detection ─────────────────────────────────── */
+const IMAGE_EXTENSIONS = new Set([
+  "png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "ico", "tiff", "tif", "avif",
+]);
+
+function getExtension(filePath: string): string {
+  const dot = filePath.lastIndexOf(".");
+  return dot >= 0 ? filePath.slice(dot + 1).toLowerCase() : "";
+}
+
+function isImageFile(filePath: string): boolean {
+  return IMAGE_EXTENSIONS.has(getExtension(filePath));
+}
+
+function mimeForExt(ext: string): string {
+  const map: Record<string, string> = {
+    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif",
+    svg: "image/svg+xml", webp: "image/webp", bmp: "image/bmp", ico: "image/x-icon",
+    tiff: "image/tiff", tif: "image/tiff", avif: "image/avif",
+  };
+  return map[ext] ?? "application/octet-stream";
+}
+
+/* ── Image Diff Preview ───────────────────────────────────── */
+type ImageViewMode = "side-by-side" | "onion-skin" | "swipe";
+
+interface ImageDiffPreviewProps {
+  filePath: string;
+  repoPath: string;
+}
+
+function ImageDiffPreview({ filePath, repoPath }: ImageDiffPreviewProps) {
+  const [newSrc, setNewSrc] = useState<string | null>(null);
+  const [oldSrc, setOldSrc] = useState<string | null>(null);
+  const [mode, setMode] = useState<ImageViewMode>("side-by-side");
+  const [opacity, setOpacity] = useState(50);
+  const [swipePos, setSwipePos] = useState(50);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const swipeRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+
+  const ext = getExtension(filePath);
+  const mime = mimeForExt(ext);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadError(null);
+
+    // Load current working copy
+    ipc.readFileBase64(repoPath, filePath)
+      .then((b64) => { if (!cancelled) setNewSrc(`data:${mime};base64,${b64}`); })
+      .catch(() => { if (!cancelled) setNewSrc(null); });
+
+    // Load HEAD version
+    ipc.getFileBase64AtRef(repoPath, filePath, "HEAD")
+      .then((b64) => { if (!cancelled) setOldSrc(`data:${mime};base64,${b64}`); })
+      .catch(() => { if (!cancelled) setOldSrc(null); }); // file may be new
+
+    return () => { cancelled = true; };
+  }, [repoPath, filePath, mime]);
+
+  const handleSwipeMove = useCallback((clientX: number) => {
+    const el = swipeRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    setSwipePos(pct);
+  }, []);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => { if (dragging.current) handleSwipeMove(e.clientX); };
+    const onUp = () => { dragging.current = false; };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+  }, [handleSwipeMove]);
+
+  if (loadError) {
+    return <div style={{ padding: 20, color: "var(--color-error)" }}>{loadError}</div>;
+  }
+
+  if (!newSrc && !oldSrc) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--color-text-muted)", fontSize: 13 }}>
+        Loading image preview…
+      </div>
+    );
+  }
+
+  const imgStyle: React.CSSProperties = {
+    maxWidth: "100%",
+    maxHeight: "400px",
+    objectFit: "contain",
+    borderRadius: "6px",
+    border: "1px solid var(--overlay-light)",
+    background: "repeating-conic-gradient(var(--overlay-subtle) 0% 25%, transparent 0% 50%) 50% / 16px 16px",
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      {/* Mode selector */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
+        background: "var(--color-bg-elevated)", borderBottom: "1px solid var(--color-border-subtle)", flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)", marginRight: 8 }}>
+          Image Preview
+        </span>
+        {(["side-by-side", "onion-skin", "swipe"] as ImageViewMode[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            style={{
+              padding: "3px 10px", fontSize: 10, fontWeight: 700, borderRadius: 8, cursor: "pointer",
+              border: `1px solid ${mode === m ? "var(--color-accent-border)" : "var(--overlay-light)"}`,
+              background: mode === m ? "var(--color-accent-dim)" : "var(--overlay-subtle)",
+              color: mode === m ? "var(--color-accent)" : "var(--color-text-secondary)",
+              transition: "all 120ms ease",
+            }}
+          >
+            {m === "side-by-side" ? "Side by Side" : m === "onion-skin" ? "Onion Skin" : "Swipe"}
+          </button>
+        ))}
+        {mode === "onion-skin" && (
+          <input
+            type="range" min={0} max={100} value={opacity}
+            onChange={(e) => setOpacity(Number(e.target.value))}
+            title={`Opacity: ${opacity}%`}
+            style={{ width: 120, accentColor: "var(--color-accent)" }}
+          />
+        )}
+      </div>
+
+      {/* Image content */}
+      <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
+        {mode === "side-by-side" && (
+          <div style={{ display: "flex", gap: 16, alignItems: "flex-start", justifyContent: "center" }}>
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-error)", marginBottom: 6 }}>
+                Old (HEAD)
+              </div>
+              {oldSrc ? (
+                <img src={oldSrc} alt="Old version" style={imgStyle} />
+              ) : (
+                <div style={{ padding: 24, color: "var(--color-text-disabled)", fontSize: 12, border: "1px dashed var(--overlay-light)", borderRadius: 6 }}>
+                  (new file)
+                </div>
+              )}
+            </div>
+            <div style={{ width: 1, alignSelf: "stretch", background: "var(--overlay-light)" }} />
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-success)", marginBottom: 6 }}>
+                New (Working Copy)
+              </div>
+              {newSrc ? (
+                <img src={newSrc} alt="New version" style={imgStyle} />
+              ) : (
+                <div style={{ padding: 24, color: "var(--color-text-disabled)", fontSize: 12, border: "1px dashed var(--overlay-light)", borderRadius: 6 }}>
+                  (deleted)
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {mode === "onion-skin" && (
+          <div style={{ position: "relative", display: "inline-block", margin: "0 auto" }}>
+            {oldSrc && <img src={oldSrc} alt="Old version" style={{ ...imgStyle, display: "block" }} />}
+            {newSrc && (
+              <img
+                src={newSrc}
+                alt="New version"
+                style={{
+                  ...imgStyle,
+                  position: oldSrc ? "absolute" : "relative",
+                  top: 0, left: 0,
+                  opacity: opacity / 100,
+                  display: "block",
+                }}
+              />
+            )}
+            {!oldSrc && !newSrc && (
+              <div style={{ color: "var(--color-text-disabled)", fontSize: 12 }}>No images to compare</div>
+            )}
+          </div>
+        )}
+
+        {mode === "swipe" && (
+          <div
+            ref={swipeRef}
+            onMouseDown={(e) => { dragging.current = true; handleSwipeMove(e.clientX); }}
+            style={{
+              position: "relative", display: "inline-block", cursor: "ew-resize",
+              overflow: "hidden", borderRadius: 6, border: "1px solid var(--overlay-light)",
+              background: "repeating-conic-gradient(var(--overlay-subtle) 0% 25%, transparent 0% 50%) 50% / 16px 16px",
+            }}
+          >
+            {/* New image (full, underneath) */}
+            {newSrc && <img src={newSrc} alt="New version" style={{ display: "block", maxWidth: "100%", maxHeight: 400, objectFit: "contain" }} />}
+            {/* Old image (clipped from left) */}
+            {oldSrc && (
+              <div style={{
+                position: "absolute", top: 0, left: 0, bottom: 0,
+                width: `${swipePos}%`, overflow: "hidden",
+              }}>
+                <img src={oldSrc} alt="Old version" style={{ display: "block", maxWidth: "none", maxHeight: 400, objectFit: "contain", width: swipeRef.current?.offsetWidth }} />
+              </div>
+            )}
+            {/* Swipe divider */}
+            <div style={{
+              position: "absolute", top: 0, bottom: 0, left: `${swipePos}%`,
+              width: 2, background: "var(--color-accent)", transform: "translateX(-1px)",
+              pointerEvents: "none",
+            }}>
+              <div style={{
+                position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+                width: 24, height: 24, borderRadius: "50%",
+                background: "var(--color-accent)", display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+              }}>
+                <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>\u2194</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface ParsedLine {
   type: "add" | "remove" | "context" | "hunk" | "header";
   content: string;
@@ -132,6 +362,110 @@ function buildSideBySide(lines: ParsedLine[]): Array<{ old: ParsedLine | null; n
   return rows;
 }
 
+/* ── Word-level diff highlighting ───────────────────────────── */
+
+/** Simple word-level diff: compare two strings and return segments marked as changed/unchanged */
+function computeWordDiff(oldStr: string, newStr: string): { old: { text: string; changed: boolean }[]; new: { text: string; changed: boolean }[] } {
+  // Tokenize into words and whitespace
+  const tokenize = (s: string) => s.match(/\S+|\s+/g) || [];
+  const oldTokens = tokenize(oldStr);
+  const newTokens = tokenize(newStr);
+
+  // Simple LCS-based diff on tokens
+  const m = oldTokens.length;
+  const n = newTokens.length;
+
+  // For performance, skip LCS on very long lines
+  if (m > 200 || n > 200) {
+    return {
+      old: [{ text: oldStr, changed: true }],
+      new: [{ text: newStr, changed: true }],
+    };
+  }
+
+  // Build LCS table
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = oldTokens[i - 1] === newTokens[j - 1]
+        ? dp[i - 1][j - 1] + 1
+        : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+
+  // Backtrack to find common tokens
+  const oldMarked = new Array(m).fill(true);
+  const newMarked = new Array(n).fill(true);
+  let i = m, j = n;
+  while (i > 0 && j > 0) {
+    if (oldTokens[i - 1] === newTokens[j - 1]) {
+      oldMarked[i - 1] = false;
+      newMarked[j - 1] = false;
+      i--; j--;
+    } else if (dp[i - 1][j] > dp[i][j - 1]) {
+      i--;
+    } else {
+      j--;
+    }
+  }
+
+  // Build segments, merging consecutive same-state tokens
+  const buildSegments = (tokens: string[], marked: boolean[]) => {
+    const segs: { text: string; changed: boolean }[] = [];
+    for (let k = 0; k < tokens.length; k++) {
+      if (segs.length > 0 && segs[segs.length - 1].changed === marked[k]) {
+        segs[segs.length - 1].text += tokens[k];
+      } else {
+        segs.push({ text: tokens[k], changed: marked[k] });
+      }
+    }
+    return segs;
+  };
+
+  return { old: buildSegments(oldTokens, oldMarked), new: buildSegments(newTokens, newMarked) };
+}
+
+/** Pair consecutive remove+add lines in parsed diff for word-level highlighting */
+function buildLinePairs(lines: ParsedLine[]): Map<number, number> {
+  const pairs = new Map<number, number>();
+  let i = 0;
+  while (i < lines.length) {
+    if (lines[i].type === "remove") {
+      const removeStart = i;
+      const removes: number[] = [];
+      while (i < lines.length && lines[i].type === "remove") { removes.push(i); i++; }
+      const adds: number[] = [];
+      while (i < lines.length && lines[i].type === "add") { adds.push(i); i++; }
+      // Pair up matching remove/add lines
+      const pairCount = Math.min(removes.length, adds.length);
+      for (let p = 0; p < pairCount; p++) {
+        pairs.set(removes[p], adds[p]);
+        pairs.set(adds[p], removes[p]);
+      }
+    } else {
+      i++;
+    }
+  }
+  return pairs;
+}
+
+/** Render content with word-diff highlighting */
+function WordDiffContent({ content, segments, type }: { content: string; segments: { text: string; changed: boolean }[] | null; type: "add" | "remove" }) {
+  if (!segments) return <>{content}</>;
+  const highlightBg = type === "add" ? "var(--diff-add-bg-strong)" : "var(--diff-remove-bg-strong)";
+  return (
+    <>
+      {segments.map((seg, i) =>
+        seg.changed ? (
+          <span key={i} style={{ background: highlightBg, borderRadius: "2px" }}>{seg.text}</span>
+        ) : (
+          <span key={i}>{seg.text}</span>
+        )
+      )}
+    </>
+  );
+}
+
 /** Highlight occurrences of `query` within `text` using <mark>-like spans */
 function HighlightText({ text, query }: { text: string; query: string }) {
   if (!query) return <>{text}</>;
@@ -143,7 +477,7 @@ function HighlightText({ text, query }: { text: string; query: string }) {
   while (idx !== -1) {
     if (idx > lastIdx) parts.push(text.slice(lastIdx, idx));
     parts.push(
-      <mark key={idx} style={{ background: "#f5a623", color: "#000", borderRadius: "2px", padding: "0 1px" }}>
+      <mark key={idx} style={{ background: "var(--color-warning)", color: "#000", borderRadius: "2px", padding: "0 1px" }}>
         {text.slice(idx, idx + query.length)}
       </mark>
     );
@@ -183,7 +517,16 @@ function DiffMinimap({ lines, scrollContainerRef, searchQuery }: DiffMinimapProp
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.fillStyle = "#1a1a1a";
+    // Read theme-aware colors from CSS variables
+    const style = getComputedStyle(document.documentElement);
+    const minimapBg = style.getPropertyValue("--diff-minimap-bg").trim() || "#1a1a1a";
+    const minimapCtx = style.getPropertyValue("--diff-minimap-context").trim() || "#232323";
+    const addColor = style.getPropertyValue("--color-success").trim() || "#1db954";
+    const removeColor = style.getPropertyValue("--color-error").trim() || "#e5534b";
+    const hunkColor = style.getPropertyValue("--color-info").trim() || "#3d9be9";
+    const warnColor = style.getPropertyValue("--color-warning").trim() || "#f5a623";
+
+    ctx.fillStyle = minimapBg;
     ctx.fillRect(0, 0, W, H);
 
     const lineH = H / visibleLines.length;
@@ -194,13 +537,13 @@ function DiffMinimap({ lines, scrollContainerRef, searchQuery }: DiffMinimapProp
         const isMatch =
           searchQuery &&
           line.content.toLowerCase().includes(searchQuery.toLowerCase());
-        ctx.fillStyle = isMatch ? "#f5a623aa" : "#1DB95466";
+        ctx.fillStyle = isMatch ? warnColor + "aa" : addColor + "66";
       } else if (line.type === "remove") {
-        ctx.fillStyle = "#e5534b66";
+        ctx.fillStyle = removeColor + "66";
       } else if (line.type === "hunk") {
-        ctx.fillStyle = "#3d9be844";
+        ctx.fillStyle = hunkColor + "44";
       } else {
-        ctx.fillStyle = "#232323";
+        ctx.fillStyle = minimapCtx;
       }
       ctx.fillRect(0, y, W, h);
     });
@@ -314,6 +657,18 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
     return parseDiff(diff.content);
   }, [diff?.content]);
 
+  // Word-level diff pairs and cache
+  const linePairs = useMemo(() => buildLinePairs(parsedLines), [parsedLines]);
+  const wordDiffCache = useMemo(() => {
+    const cache = new Map<number, { old: { text: string; changed: boolean }[]; new: { text: string; changed: boolean }[] }>();
+    for (const [removeIdx, addIdx] of linePairs.entries()) {
+      if (parsedLines[removeIdx]?.type === "remove" && parsedLines[addIdx]?.type === "add" && !cache.has(removeIdx)) {
+        cache.set(removeIdx, computeWordDiff(parsedLines[removeIdx].content, parsedLines[addIdx].content));
+      }
+    }
+    return cache;
+  }, [parsedLines, linePairs]);
+
   const sideBySideRows = useMemo(() => {
     if (!sideBySide) return [];
     return buildSideBySide(parsedLines);
@@ -343,15 +698,15 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
             fill="none"
             style={{ animation: "spin 0.8s linear infinite" }}
           >
-            <circle cx="12" cy="12" r="10" stroke="#333" strokeWidth="3" />
+            <circle cx="12" cy="12" r="10" stroke="var(--overlay-medium)" strokeWidth="3" />
             <path
               d="M12 2a10 10 0 0 1 10 10"
-              stroke="#1DB954"
+              stroke="var(--color-accent)"
               strokeWidth="3"
               strokeLinecap="round"
             />
           </svg>
-          Loading diff…
+          Loading diff\u2026
         </div>
       </div>
     );
@@ -373,13 +728,13 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.4 }}>
           <path
             d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-            stroke="#535353"
+            stroke="var(--color-text-disabled)"
             strokeWidth="1.5"
             strokeLinejoin="round"
           />
-          <polyline points="14 2 14 8 20 8" stroke="#535353" strokeWidth="1.5" />
-          <line x1="9" y1="13" x2="15" y2="13" stroke="#535353" strokeWidth="1.5" />
-          <line x1="9" y1="17" x2="15" y2="17" stroke="#535353" strokeWidth="1.5" />
+          <polyline points="14 2 14 8 20 8" stroke="var(--color-text-disabled)" strokeWidth="1.5" />
+          <line x1="9" y1="13" x2="15" y2="13" stroke="var(--color-text-disabled)" strokeWidth="1.5" />
+          <line x1="9" y1="17" x2="15" y2="17" stroke="var(--color-text-disabled)" strokeWidth="1.5" />
         </svg>
         <span style={{ fontSize: "13px" }}>Select a file to see its diff</span>
       </div>
@@ -387,6 +742,10 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
   }
 
   if (!diff.content || diff.content.trim() === "") {
+    // If it's an image with no text diff, show image preview
+    if (repoPath && isImageFile(diff.file_path)) {
+      return <ImageDiffPreview filePath={diff.file_path} repoPath={repoPath} />;
+    }
     return (
       <div
         style={{
@@ -401,6 +760,11 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
         No diff content available
       </div>
     );
+  }
+
+  // Image files: show visual preview instead of text diff
+  if (repoPath && isImageFile(diff.file_path)) {
+    return <ImageDiffPreview filePath={diff.file_path} repoPath={repoPath} />;
   }
 
   // Render-time hunk counter (reset each render cycle, NOT React state)
@@ -423,7 +787,7 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
           alignItems: "center",
           gap: "16px",
           padding: "10px 16px",
-          background: "#202020",
+          background: "var(--color-bg-elevated)",
           borderBottom: "1px solid var(--color-border-subtle)",
           flexShrink: 0,
         }}
@@ -455,15 +819,15 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
               padding: "2px 8px",
               fontSize: "10px",
               fontWeight: 600,
-              color: copied ? "#1DB954" : "#b3b3b3",
-              background: copied ? "rgba(29,185,84,0.1)" : "var(--overlay-subtle)",
-              border: `1px solid ${copied ? "rgba(29,185,84,0.3)" : "var(--overlay-light)"}`,
+              color: copied ? "var(--color-success)" : "var(--color-text-secondary)",
+              background: copied ? "var(--color-success-dim)" : "var(--overlay-subtle)",
+              border: `1px solid ${copied ? "var(--color-success-border)" : "var(--overlay-light)"}`,
               borderRadius: "8px",
               cursor: "pointer",
               transition: "all 120ms ease",
             }}
           >
-            {copied ? "✓ Copied" : "⎘ Copy path"}
+            {copied ? "\u2713 Copied" : "\u2398 Copy path"}
           </button>
           {/* Open in VS Code button */}
           {repoPath && (
@@ -489,7 +853,7 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)"; }}
             >
-              ⎈ Open
+              \u2388 Open
             </button>
           )}
         </div>
@@ -498,8 +862,8 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
             <span
               style={{
                 fontSize: "11px",
-                color: "#3d9be9",
-                background: "rgba(61,155,233,0.1)",
+                color: "var(--color-info)",
+                background: "var(--color-info-dim)",
                 padding: "2px 8px",
                 borderRadius: "10px",
                 fontWeight: 600,
@@ -512,8 +876,8 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
             style={{
               fontSize: "12px",
               fontWeight: 700,
-              color: "#1DB954",
-              background: "rgba(29,185,84,0.12)",
+              color: "var(--color-success)",
+              background: "var(--color-success-dim)",
               padding: "2px 8px",
               borderRadius: "10px",
             }}
@@ -524,8 +888,8 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
             style={{
               fontSize: "12px",
               fontWeight: 700,
-              color: "#e5534b",
-              background: "rgba(229,83,75,0.12)",
+              color: "var(--color-error)",
+              background: "var(--color-error-dim)",
               padding: "2px 8px",
               borderRadius: "10px",
             }}
@@ -540,15 +904,15 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
               padding: "2px 8px",
               fontSize: "10px",
               fontWeight: 700,
-              color: showSearch ? "#f5a623" : "#b3b3b3",
-              background: showSearch ? "rgba(245,166,35,0.12)" : "var(--overlay-subtle)",
-              border: `1px solid ${showSearch ? "rgba(245,166,35,0.3)" : "var(--overlay-light)"}`,
+              color: showSearch ? "var(--color-warning)" : "var(--color-text-secondary)",
+              background: showSearch ? "var(--color-warning-dim)" : "var(--overlay-subtle)",
+              border: `1px solid ${showSearch ? "var(--color-warning-border)" : "var(--overlay-light)"}`,
               borderRadius: "8px",
               cursor: "pointer",
               transition: "all 120ms ease",
             }}
           >
-            🔍
+            \uD83D\uDD0D
           </button>
           {/* Diff mode toggle */}
           <button
@@ -558,9 +922,9 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
               padding: "2px 8px",
               fontSize: "10px",
               fontWeight: 700,
-              color: sideBySide ? "#1DB954" : "#b3b3b3",
-              background: sideBySide ? "rgba(29,185,84,0.12)" : "var(--overlay-subtle)",
-              border: `1px solid ${sideBySide ? "rgba(29,185,84,0.3)" : "var(--overlay-light)"}`,
+              color: sideBySide ? "var(--color-accent)" : "var(--color-text-secondary)",
+              background: sideBySide ? "var(--color-accent-dim)" : "var(--overlay-subtle)",
+              border: `1px solid ${sideBySide ? "var(--color-accent-border)" : "var(--overlay-light)"}`,
               borderRadius: "8px",
               cursor: "pointer",
               transition: "all 120ms ease",
@@ -572,7 +936,7 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
               if (!sideBySide) (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
             }}
           >
-            {sideBySide ? "⬛⬛ Unified" : "⬜⬜ Split"}
+            {sideBySide ? "\u2B1B\u2B1B Unified" : "\u2B1C\u2B1C Split"}
           </button>
         </div>
       </div>
@@ -584,7 +948,7 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
           alignItems: "center",
           gap: "8px",
           padding: "6px 12px",
-          background: "#252525",
+          background: "var(--color-bg-elevated)",
           borderBottom: "1px solid var(--color-border-subtle)",
           flexShrink: 0,
         }}>
@@ -592,11 +956,11 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
             ref={searchRef}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search in diff… (Esc to close)"
+            placeholder="Search in diff\u2026 (Esc to close)"
             style={{
               flex: 1,
               background: "var(--color-bg-highlight)",
-              border: "1px solid #535353",
+              border: "1px solid var(--color-border)",
               borderRadius: "6px",
               padding: "4px 10px",
               color: "var(--color-text-primary)",
@@ -612,7 +976,7 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
           <button
             onClick={() => { setShowSearch(false); setSearchQuery(""); }}
             style={{ background: "none", border: "none", color: "var(--color-text-secondary)", cursor: "pointer", fontSize: "14px", padding: "2px 4px" }}
-          >✕</button>
+          >\u2715</button>
         </div>
       )}
 
@@ -645,20 +1009,20 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
                   if (row.old?.type === "hunk") {
                     return (
                       <tr key={i}>
-                        <td colSpan={2} style={{ background: "rgba(61,155,233,0.08)", color: "#3d9be9", padding: "4px 12px", fontSize: "11px", whiteSpace: "pre", userSelect: "none" }}>
+                        <td colSpan={2} style={{ background: "var(--diff-hunk-bg)", color: "var(--diff-hunk-text)", padding: "4px 12px", fontSize: "11px", whiteSpace: "pre", userSelect: "none" }}>
                           {row.old.content}
                         </td>
                       </tr>
                     );
                   }
                   const line = row.old;
-                  const bg = line?.type === "remove" ? "rgba(229,83,75,0.12)" : "transparent";
+                  const bg = line?.type === "remove" ? "var(--diff-remove-bg-strong)" : "transparent";
                   return (
                     <tr key={i} style={{ background: bg }}>
                       <td style={{ color: "var(--overlay-vivid)", padding: "0 6px", textAlign: "right", userSelect: "none", fontSize: "11px", whiteSpace: "nowrap" }}>
                         {line?.oldLine ?? ""}
                       </td>
-                      <td style={{ color: line?.type === "remove" ? "#ffb3ae" : "#e0e0e0", padding: "0 12px 0 4px", whiteSpace: "pre", wordBreak: "break-all" }}>
+                      <td style={{ color: line?.type === "remove" ? "var(--diff-remove-text)" : "var(--diff-context-text)", padding: "0 12px 0 4px", whiteSpace: "pre", wordBreak: "break-all" }}>
                         {line?.content ?? ""}
                       </td>
                     </tr>
@@ -676,20 +1040,20 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
                   if (row.old?.type === "hunk") {
                     return (
                       <tr key={i}>
-                        <td colSpan={2} style={{ background: "rgba(61,155,233,0.08)", color: "#3d9be9", padding: "4px 12px", fontSize: "11px", whiteSpace: "pre", userSelect: "none" }}>
+                        <td colSpan={2} style={{ background: "var(--diff-hunk-bg)", color: "var(--diff-hunk-text)", padding: "4px 12px", fontSize: "11px", whiteSpace: "pre", userSelect: "none" }}>
                           &nbsp;
                         </td>
                       </tr>
                     );
                   }
                   const line = row.new;
-                  const bg = line?.type === "add" ? "rgba(29,185,84,0.1)" : "transparent";
+                  const bg = line?.type === "add" ? "var(--diff-add-bg-strong)" : "transparent";
                   return (
                     <tr key={i} style={{ background: bg }}>
                       <td style={{ color: "var(--overlay-vivid)", padding: "0 6px", textAlign: "right", userSelect: "none", fontSize: "11px", whiteSpace: "nowrap" }}>
                         {line?.newLine ?? ""}
                       </td>
-                      <td style={{ color: line?.type === "add" ? "#b6f5c8" : "#e0e0e0", padding: "0 12px 0 4px", whiteSpace: "pre", wordBreak: "break-all" }}>
+                      <td style={{ color: line?.type === "add" ? "var(--diff-add-text)" : "var(--diff-context-text)", padding: "0 12px 0 4px", whiteSpace: "pre", wordBreak: "break-all" }}>
                         {line?.content ?? ""}
                       </td>
                     </tr>
@@ -741,8 +1105,8 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
                     <td
                       colSpan={showHunkActions ? 4 : 4}
                       style={{
-                        background: "rgba(61,155,233,0.08)",
-                        color: "#3d9be9",
+                        background: "var(--diff-hunk-bg)",
+                        color: "var(--diff-hunk-text)",
                         padding: "4px 16px",
                         fontSize: "11px",
                         fontFamily: "inherit",
@@ -755,7 +1119,7 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
                     {showHunkActions && (
                       <td
                         style={{
-                          background: "rgba(61,155,233,0.08)",
+                          background: "var(--diff-hunk-bg)",
                           padding: "2px 8px 2px 4px",
                           textAlign: "right",
                           whiteSpace: "nowrap",
@@ -770,9 +1134,9 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
                               padding: "2px 7px",
                               fontSize: "10px",
                               fontWeight: 700,
-                              color: "#e5534b",
-                              background: "rgba(229,83,75,0.15)",
-                              border: "1px solid rgba(229,83,75,0.3)",
+                              color: "var(--color-error)",
+                              background: "var(--color-error-dim)",
+                              border: "1px solid var(--color-error-border)",
                               borderRadius: "6px",
                               cursor: "pointer",
                               marginRight: "4px",
@@ -780,14 +1144,14 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
                             }}
                             onMouseEnter={(e) =>
                               ((e.currentTarget as HTMLButtonElement).style.background =
-                                "rgba(229,83,75,0.3)")
+                                "var(--diff-remove-bg-strong)")
                             }
                             onMouseLeave={(e) =>
                               ((e.currentTarget as HTMLButtonElement).style.background =
-                                "rgba(229,83,75,0.15)")
+                                "var(--color-error-dim)")
                             }
                           >
-                            ✕ Discard
+                            \u2715 Discard
                           </button>
                         )}
                         {onStageHunk && hunkPatch && (
@@ -798,20 +1162,20 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
                               padding: "2px 7px",
                               fontSize: "10px",
                               fontWeight: 700,
-                              color: "#1DB954",
-                              background: "rgba(29,185,84,0.15)",
-                              border: "1px solid rgba(29,185,84,0.3)",
+                              color: "var(--color-success)",
+                              background: "var(--color-success-dim)",
+                              border: "1px solid var(--color-success-border)",
                               borderRadius: "6px",
                               cursor: "pointer",
                               transition: "background 100ms ease",
                             }}
                             onMouseEnter={(e) =>
                               ((e.currentTarget as HTMLButtonElement).style.background =
-                                "rgba(29,185,84,0.3)")
+                                "var(--diff-add-bg-strong)")
                             }
                             onMouseLeave={(e) =>
                               ((e.currentTarget as HTMLButtonElement).style.background =
-                                "rgba(29,185,84,0.15)")
+                                "var(--color-success-dim)")
                             }
                           >
                             + Stage
@@ -829,17 +1193,17 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
 
               const bg =
                 line.type === "add"
-                  ? "rgba(29,185,84,0.08)"
+                  ? "var(--diff-add-bg)"
                   : line.type === "remove"
-                  ? "rgba(229,83,75,0.08)"
+                  ? "var(--diff-remove-bg)"
                   : "transparent";
 
               const lineNumColor = "var(--overlay-vivid)";
               const sigColor =
                 line.type === "add"
-                  ? "#1DB954"
+                  ? "var(--color-success)"
                   : line.type === "remove"
-                  ? "#e5534b"
+                  ? "var(--color-error)"
                   : "transparent";
               const sig =
                 line.type === "add" ? "+" : line.type === "remove" ? "-" : " ";
@@ -891,17 +1255,31 @@ export function DiffViewer({ diff, loading, repoPath, onStageHunk, onDiscardHunk
                     style={{
                       color:
                         line.type === "add"
-                          ? "#b6f5c8"
+                          ? "var(--diff-add-text)"
                           : line.type === "remove"
-                          ? "#ffb3ae"
-                          : "#e0e0e0",
+                          ? "var(--diff-remove-text)"
+                          : "var(--diff-context-text)",
                       padding: "0 16px 0 4px",
                       whiteSpace: "pre",
                       wordBreak: "break-all",
                       verticalAlign: "top",
                     }}
                   >
-                    <HighlightText text={line.content} query={searchQuery} />
+                    {searchQuery ? (
+                      <HighlightText text={line.content} query={searchQuery} />
+                    ) : (line.type === "remove" || line.type === "add") && linePairs.has(i) ? (
+                      <WordDiffContent
+                        content={line.content}
+                        segments={
+                          line.type === "remove"
+                            ? wordDiffCache.get(i)?.old ?? null
+                            : wordDiffCache.get(linePairs.get(i)!)?.new ?? null
+                        }
+                        type={line.type}
+                      />
+                    ) : (
+                      line.content
+                    )}
                   </td>
                   {/* Empty cell to fill hunk-action column */}
                   {showHunkActions && <td />}

@@ -6,6 +6,8 @@ import { useToastStore } from "../../store/toastStore";
 import { useGitHubStore } from "../../store/githubStore";
 import { useActivityStore } from "../../store/activityStore";
 import { useConfirmStore } from "../../store/confirmStore";
+import { useGroupStore } from "../../store/groupStore";
+import { computeHealth } from "../../lib/healthScore";
 import { ipc } from "../../lib/ipc";
 import { WorkflowRunsModal } from "../GitHub/WorkflowRunsModal";
 import { GitHubPRsModal } from "../GitHub/GitHubPRsModal";
@@ -152,14 +154,14 @@ function getStateLabel(state: SyncState): string {
 
 function getStateDot(state: SyncState): string {
   switch (state) {
-    case "SYNCED":     return "#1DB954";
-    case "NEEDS_PUSH": return "#3d9be9";
-    case "NEEDS_PULL": return "#f59b00";
-    case "DIVERGED":   return "#ff7b00";
-    case "CONFLICT":   return "#e5534b";
-    case "ERROR":      return "#e5534b";
-    case "NOT_INIT":   return "#535353";
-    case "CHECKING":   return "#b3b3b3";
+    case "SYNCED":     return "var(--color-success)";
+    case "NEEDS_PUSH": return "var(--color-info)";
+    case "NEEDS_PULL": return "var(--color-warning)";
+    case "DIVERGED":   return "var(--color-conflict)";
+    case "CONFLICT":   return "var(--color-error)";
+    case "ERROR":      return "var(--color-error)";
+    case "NOT_INIT":   return "var(--color-text-disabled)";
+    case "CHECKING":   return "var(--color-text-secondary)";
   }
 }
 
@@ -210,6 +212,8 @@ export function RepoContextMenu({ x, y, repoPath, repoName, conflictsCount, remo
   const refreshStatus = useRepoStore((s) => s.refreshStatus);
   const addToast = useToastStore((s) => s.add);
   const logActivity = useActivityStore((s) => s.addEntry);
+  const { groups, assignments, assignRepo } = useGroupStore();
+  const [showGroupSub, setShowGroupSub] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -287,7 +291,7 @@ export function RepoContextMenu({ x, y, repoPath, repoName, conflictsCount, remo
   const handlePush = async () => {
     onClose();
     try {
-      await ipc.pushRepo(repoPath, "");
+      await ipc.pushRepo(repoPath);
       addToast("success", "Pushed successfully");
       logActivity({ repoName, operation: "Push", success: true, message: "Pushed to remote", isDestructive: false });
       refreshStatus(repoPath);
@@ -334,6 +338,73 @@ export function RepoContextMenu({ x, y, repoPath, repoName, conflictsCount, remo
     if (ok) {
       await removeRepo(repoPath);
       addToast("info", "Repo removed from PushVault");
+    }
+  };
+
+  const handleForcePush = async () => {
+    onClose();
+    const ok = await useConfirmStore.getState().request({
+      title: "Force Push?",
+      description:
+        `This will OVERWRITE the remote branch with your local version.\n\n` +
+        `Repository: ${repoName}\n` +
+        `Path: ${repoPath}\n\n` +
+        `This action is DESTRUCTIVE and cannot be undone. ` +
+        `Any commits on the remote that don't exist locally will be PERMANENTLY LOST.\n\n` +
+        `Are you sure?`,
+      danger: true,
+      confirmLabel: "Force Push",
+    });
+    if (ok) {
+      try {
+        addToast("warning", "Force pushing…");
+        const result = await ipc.forcePush(repoPath);
+        addToast("success", result);
+        logActivity({ repoName, operation: "Force Push", success: true, message: result, isDestructive: true });
+        refreshStatus(repoPath);
+      } catch (e) {
+        addToast("error", `Force push failed: ${e}`);
+        logActivity({ repoName, operation: "Force Push", success: false, message: String(e), isDestructive: true });
+      }
+    }
+  };
+
+  const handlePullRebase = async () => {
+    onClose();
+    try {
+      addToast("info", "Pulling with rebase…");
+      const result = await ipc.pullWithRebase(repoPath);
+      addToast("success", result || "Pull (rebase) successful");
+      logActivity({ repoName, operation: "Pull (Rebase)", success: true, message: result || "Rebased", isDestructive: false });
+      refreshStatus(repoPath);
+    } catch (e) {
+      addToast("error", `Pull (rebase) failed: ${e}`);
+      logActivity({ repoName, operation: "Pull (Rebase)", success: false, message: String(e), isDestructive: false });
+    }
+  };
+
+  const handleForcePushSafe = async () => {
+    onClose();
+    const ok = await useConfirmStore.getState().request({
+      title: "Force Push (with lease)?",
+      description:
+        `This will force-push your local branch but ONLY if the remote hasn't been updated by someone else.\n\n` +
+        `Repository: ${repoName}\n` +
+        `This is safer than a raw force push but still rewrites remote history.`,
+      danger: true,
+      confirmLabel: "Force Push (Safe)",
+    });
+    if (ok) {
+      try {
+        addToast("warning", "Force pushing (with lease)…");
+        const result = await ipc.forcePushWithLease(repoPath);
+        addToast("success", result);
+        logActivity({ repoName, operation: "Force Push (Lease)", success: true, message: result, isDestructive: true });
+        refreshStatus(repoPath);
+      } catch (e) {
+        addToast("error", `Force push (safe) failed: ${e}`);
+        logActivity({ repoName, operation: "Force Push (Lease)", success: false, message: String(e), isDestructive: true });
+      }
     }
   };
 
@@ -398,7 +469,7 @@ export function RepoContextMenu({ x, y, repoPath, repoName, conflictsCount, remo
 
   // Adjust position to stay within viewport
   const menuWidth = 220;
-  const menuHeight = remoteUrl ? 748 : 568;
+  const menuHeight = remoteUrl ? 840 : 660;
   const adjustedX = Math.min(x, window.innerWidth - menuWidth - 8);
   const adjustedY = Math.min(y, window.innerHeight - menuHeight - 8);
 
@@ -420,22 +491,22 @@ export function RepoContextMenu({ x, y, repoPath, repoName, conflictsCount, remo
         border: "none",
         cursor: "pointer",
         fontSize: "13px",
-        color: danger ? "#e5534b" : "#b3b3b3",
+        color: danger ? "var(--color-error)" : "var(--color-text-secondary)",
         textAlign: "left",
         transition: "background 100ms ease, color 100ms ease",
         borderRadius: 0,
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = danger
-          ? "rgba(229,83,75,0.1)"
+          ? "var(--color-error-dim)"
           : "var(--overlay-light)";
-        (e.currentTarget as HTMLButtonElement).style.color = danger ? "#e5534b" : "#fff";
+        (e.currentTarget as HTMLButtonElement).style.color = danger ? "var(--color-error)" : "var(--color-text-primary)";
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = "none";
         (e.currentTarget as HTMLButtonElement).style.color = danger
-          ? "#e5534b"
-          : "#b3b3b3";
+          ? "var(--color-error)"
+          : "var(--color-text-secondary)";
       }}
     >
       <span style={{ fontSize: "14px", width: "16px", textAlign: "center" }}>{icon}</span>
@@ -463,7 +534,11 @@ export function RepoContextMenu({ x, y, repoPath, repoName, conflictsCount, remo
       {item("Sync (Pull + Push)", "⇅", handleSync)}
       {item("Push", "↑", handlePush)}
       {item("Pull", "↓", handlePull)}
+      {item("Pull (Rebase)", "↓↻", handlePullRebase)}
       {item("Fetch", "⟳", handleFetch)}
+      <div style={{ height: "1px", background: "var(--overlay-subtle)", margin: "4px 0" }} />
+      {item("Force Push (Safe)", "↑⚡", handleForcePushSafe, true)}
+      {item("Force Push", "↑!", handleForcePush, true)}
       <div style={{ height: "1px", background: "var(--overlay-subtle)", margin: "4px 0" }} />
       {item("Changes", "±", () => openPanel("staging"))}
       {item("History", "◷", () => openPanel("history"))}
@@ -494,6 +569,119 @@ export function RepoContextMenu({ x, y, repoPath, repoName, conflictsCount, remo
           {onShowIssues && item("Issues", "◎", () => { onClose(); onShowIssues(); })}
           {onShowWorkflowRuns && item("GitHub Actions", "⏱", () => { onClose(); onShowWorkflowRuns(); })}
           {onShowRelease && item("Create Release", "🚀", () => { onClose(); onShowRelease(); })}
+        </>
+      )}
+      {/* Move to Group submenu */}
+      {groups.length > 0 && (
+        <>
+          <div style={{ height: "1px", background: "var(--overlay-subtle)", margin: "4px 0" }} />
+          <div
+            style={{ position: "relative" }}
+            onMouseEnter={() => setShowGroupSub(true)}
+            onMouseLeave={() => setShowGroupSub(false)}
+          >
+            <button
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                width: "100%",
+                padding: "8px 16px",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "13px",
+                color: "var(--color-text-secondary)",
+                textAlign: "left",
+                transition: "background 100ms ease, color 100ms ease",
+                borderRadius: 0,
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = "none";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
+              }}
+            >
+              <span style={{ fontSize: "14px", width: "16px", textAlign: "center" }}>📂</span>
+              Move to Group
+              <span style={{ marginLeft: "auto", fontSize: "10px", opacity: 0.5 }}>▶</span>
+            </button>
+            {showGroupSub && (
+              <div style={{
+                position: "absolute",
+                left: "100%",
+                top: 0,
+                background: "var(--color-bg-elevated)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "10px",
+                padding: "4px 0",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
+                zIndex: 9999,
+                minWidth: "160px",
+              }}>
+                {groups.map((g) => {
+                  const isAssigned = assignments[repoPath] === g.id;
+                  return (
+                    <button
+                      key={g.id}
+                      onClick={() => { assignRepo(repoPath, isAssigned ? null : g.id); onClose(); }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        width: "100%",
+                        padding: "7px 14px",
+                        background: isAssigned ? "var(--overlay-light)" : "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        color: isAssigned ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+                        textAlign: "left",
+                        transition: "background 100ms ease",
+                        borderRadius: 0,
+                        fontWeight: isAssigned ? 700 : 400,
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isAssigned ? "var(--overlay-light)" : "none"; }}
+                    >
+                      <div style={{ width: "8px", height: "8px", borderRadius: "3px", background: g.color, flexShrink: 0 }} />
+                      {g.name}
+                      {isAssigned && <span style={{ marginLeft: "auto", fontSize: "11px" }}>✓</span>}
+                    </button>
+                  );
+                })}
+                {assignments[repoPath] && (
+                  <>
+                    <div style={{ height: "1px", background: "var(--overlay-subtle)", margin: "4px 0" }} />
+                    <button
+                      onClick={() => { assignRepo(repoPath, null); onClose(); }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        width: "100%",
+                        padding: "7px 14px",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        color: "var(--color-text-muted)",
+                        textAlign: "left",
+                        borderRadius: 0,
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                    >
+                      Remove from group
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </>
       )}
       <div style={{ height: "1px", background: "var(--overlay-subtle)", margin: "4px 0" }} />
@@ -662,15 +850,15 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
           overflow: "hidden",
           border: `1px solid ${getBorderColor()}`,
           cursor: "pointer",
-          transition: "all 0.2s ease",
+          transition: "all 0.22s cubic-bezier(0.16, 1, 0.3, 1)",
           transform: pressed
-            ? "scale(0.975)"
+            ? "scale(0.97)"
             : hovered
-            ? "translateY(-2px)"
+            ? "translateY(-3px) scale(1.01)"
             : "none",
           boxShadow: hovered
-            ? `0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px ${gradientBase}22`
-            : "0 2px 8px rgba(0,0,0,0.3)",
+            ? `0 12px 32px rgba(0,0,0,0.5), 0 0 0 1px ${gradientBase}22, 0 0 24px ${gradientBase}12`
+            : "0 2px 8px rgba(0,0,0,0.25)",
           animationDelay: `${index * 40}ms`,
           animation: "fade-in 300ms ease both",
           minWidth: "200px",
@@ -682,8 +870,8 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
         {/* Header gradient area */}
         <div
           style={{
-            height: "120px",
-            background: `linear-gradient(145deg, ${gradientBase}dd 0%, ${gradientBase}88 45%, ${gradientBase}22 80%, transparent 100%), #1a1a1a`,
+            height: "110px",
+            background: `linear-gradient(145deg, ${gradientBase}cc 0%, ${gradientBase}66 50%, ${gradientBase}18 85%, transparent 100%), var(--color-bg-elevated)`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -696,7 +884,9 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
             style={{
               position: "absolute",
               inset: 0,
-              background: `radial-gradient(ellipse at 20% 50%, ${gradientBase}55 0%, transparent 65%), radial-gradient(circle at 80% 20%, ${gradientBase}20 0%, transparent 50%)`,
+              background: `radial-gradient(ellipse at 25% 50%, ${gradientBase}44 0%, transparent 60%), radial-gradient(circle at 85% 15%, ${gradientBase}1a 0%, transparent 50%)`,
+              transition: "opacity 300ms ease",
+              opacity: hovered ? 1.3 : 1,
             }}
           />
 
@@ -922,6 +1112,23 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
             {status ? buildStatusText(status) : "Loading…"}
           </p>
 
+          {/* Last commit time */}
+          {status?.last_commit_time && (
+            <p
+              style={{
+                fontSize: "10px",
+                color: "var(--color-text-disabled)",
+                marginTop: "2px",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+              title={status.last_commit || undefined}
+            >
+              {status.last_commit_time}
+            </p>
+          )}
+
           {/* Ahead/Behind bar */}
           {status && (status.ahead > 0 || status.behind > 0) && (
             <div
@@ -962,6 +1169,48 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
               )}
             </div>
           )}
+
+          {/* Health score bar */}
+          {status && (() => {
+            const health = computeHealth(status);
+            return (
+              <div
+                title={health.issues.length > 0 ? health.issues.join("\n") : "No issues"}
+                style={{
+                  marginTop: "10px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                {/* Mini progress bar */}
+                <div style={{
+                  flex: 1,
+                  height: "3px",
+                  borderRadius: "2px",
+                  background: "var(--overlay-subtle)",
+                  overflow: "hidden",
+                }}>
+                  <div style={{
+                    width: `${health.score}%`,
+                    height: "100%",
+                    borderRadius: "2px",
+                    background: health.color,
+                    transition: "width 400ms ease",
+                  }} />
+                </div>
+                <span style={{
+                  fontSize: "9px",
+                  fontWeight: 700,
+                  color: health.color,
+                  flexShrink: 0,
+                  letterSpacing: "0.02em",
+                }}>
+                  {health.score}
+                </span>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Error overlay tint */}
@@ -973,6 +1222,21 @@ export function RepoCard({ repo, status, index }: RepoCardProps) {
               background: "rgba(229,83,75,0.04)",
               pointerEvents: "none",
               borderRadius: "12px",
+            }}
+          />
+        )}
+
+        {/* Bottom accent bar for repos with changes */}
+        {hasChanges && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "2px",
+              background: `linear-gradient(90deg, ${gradientBase}88, ${gradientBase}00)`,
+              borderRadius: "0 0 12px 12px",
             }}
           />
         )}

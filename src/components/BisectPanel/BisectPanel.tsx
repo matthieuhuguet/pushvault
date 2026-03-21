@@ -89,7 +89,6 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        animation: "fade-in 150ms ease both",
       }}
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
@@ -117,8 +116,8 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
         }}>
           <div style={{
             width: "32px", height: "32px", borderRadius: "8px",
-            background: "rgba(61,155,233,0.15)",
-            border: "1px solid rgba(61,155,233,0.3)",
+            background: "var(--color-info-dim)",
+            border: "1px solid var(--color-info-border)",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "16px", flexShrink: 0,
           }}>
@@ -141,7 +140,7 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#6a6a6a"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-disabled)"; }}
           >
             ✕
           </button>
@@ -155,13 +154,13 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
             /* ── Setup form ── */
             <div>
               <p style={{ margin: "0 0 20px", fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
-                Bisect checks out commits between a <span style={{ color: "#e5534b", fontWeight: 600 }}>bad</span> commit
-                (where the bug exists) and a <span style={{ color: "#1DB954", fontWeight: 600 }}>good</span> commit
+                Bisect checks out commits between a <span style={{ color: "var(--color-error)", fontWeight: 600 }}>bad</span> commit
+                (where the bug exists) and a <span style={{ color: "var(--color-success)", fontWeight: 600 }}>good</span> commit
                 (where it didn't exist yet). You test each one and PushVault narrows down the culprit.
               </p>
 
               <div style={{ marginBottom: "16px" }}>
-                <label style={{ display: "block", fontSize: "12px", color: "#e5534b", fontWeight: 600, marginBottom: "6px" }}>
+                <label style={{ display: "block", fontSize: "12px", color: "var(--color-error)", fontWeight: 600, marginBottom: "6px" }}>
                   Bad commit (has the bug)
                 </label>
                 <input
@@ -187,7 +186,7 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
               </div>
 
               <div style={{ marginBottom: "24px" }}>
-                <label style={{ display: "block", fontSize: "12px", color: "#1DB954", fontWeight: 600, marginBottom: "6px" }}>
+                <label style={{ display: "block", fontSize: "12px", color: "var(--color-success)", fontWeight: 600, marginBottom: "6px" }}>
                   Good commit (bug not present)
                 </label>
                 <input
@@ -219,7 +218,7 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
                 style={{
                   width: "100%",
                   padding: "11px",
-                  background: goodCommit.trim() ? "#3d9be9" : "rgba(61,155,233,0.3)",
+                  background: goodCommit.trim() ? "var(--color-info)" : "var(--color-info-border)",
                   border: "none",
                   borderRadius: "10px",
                   color: "var(--color-text-primary)",
@@ -246,15 +245,15 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
               {isBugFound && (
                 <div style={{
                   padding: "14px 16px",
-                  background: "rgba(245,155,0,0.1)",
-                  border: "1px solid rgba(245,155,0,0.4)",
+                  background: "var(--color-warning-dim)",
+                  border: "1px solid var(--color-warning-border)",
                   borderRadius: "10px",
                   marginBottom: "16px",
                 }}>
-                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#f59b00" }}>
+                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "var(--color-warning)" }}>
                     🎯 First bad commit found!
                   </p>
-                  <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#8a8a8a" }}>
+                  <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--color-text-muted)" }}>
                     See output below. Run Reset to return to your original branch.
                   </p>
                 </div>
@@ -263,8 +262,8 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
               {/* Current commit card */}
               <div style={{
                 padding: "14px 16px",
-                background: "rgba(61,155,233,0.08)",
-                border: "1px solid rgba(61,155,233,0.2)",
+                background: "var(--color-info-dim)",
+                border: "1px solid var(--color-info-border)",
                 borderRadius: "10px",
                 marginBottom: "16px",
               }}>
@@ -272,7 +271,7 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
                   CURRENT COMMIT TO TEST
                 </p>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <code style={{ fontSize: "13px", color: "#3d9be9", fontFamily: "monospace" }}>
+                  <code style={{ fontSize: "13px", color: "var(--color-info)", fontFamily: "monospace" }}>
                     {status.current_hash || "—"}
                   </code>
                   <span style={{ fontSize: "13px", color: "var(--color-text-secondary)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -303,7 +302,7 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
                       width: status.steps_done > 0
                         ? `${Math.min((status.steps_done / (status.steps_done + status.steps_remaining)) * 100, 100)}%`
                         : "0%",
-                      background: "#3d9be9",
+                      background: "var(--color-info)",
                       borderRadius: "2px",
                       transition: "width 400ms ease",
                     }} />
@@ -319,10 +318,10 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
                   style={{
                     flex: 1,
                     padding: "10px",
-                    background: "rgba(29,185,84,0.15)",
-                    border: "1px solid rgba(29,185,84,0.3)",
+                    background: "var(--color-success-dim)",
+                    border: "1px solid var(--color-success-border)",
                     borderRadius: "10px",
-                    color: "#1DB954",
+                    color: "var(--color-success)",
                     fontSize: "13px",
                     fontWeight: 700,
                     cursor: acting || isBugFound ? "not-allowed" : "pointer",
@@ -330,10 +329,10 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
                   }}
                   onMouseEnter={(e) => {
                     if (!acting && !isBugFound)
-                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(29,185,84,0.25)";
+                      (e.currentTarget as HTMLButtonElement).style.background = "var(--color-success-border)";
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(29,185,84,0.15)";
+                    (e.currentTarget as HTMLButtonElement).style.background = "var(--color-success-dim)";
                   }}
                 >
                   ✓ Good
@@ -344,10 +343,10 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
                   style={{
                     flex: 1,
                     padding: "10px",
-                    background: "rgba(229,83,75,0.15)",
-                    border: "1px solid rgba(229,83,75,0.3)",
+                    background: "var(--color-error-dim)",
+                    border: "1px solid var(--color-error-border)",
                     borderRadius: "10px",
-                    color: "#e5534b",
+                    color: "var(--color-error)",
                     fontSize: "13px",
                     fontWeight: 700,
                     cursor: acting || isBugFound ? "not-allowed" : "pointer",
@@ -355,10 +354,10 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
                   }}
                   onMouseEnter={(e) => {
                     if (!acting && !isBugFound)
-                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(229,83,75,0.25)";
+                      (e.currentTarget as HTMLButtonElement).style.background = "var(--color-error-border)";
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(229,83,75,0.15)";
+                    (e.currentTarget as HTMLButtonElement).style.background = "var(--color-error-dim)";
                   }}
                 >
                   ✕ Bad
@@ -386,7 +385,7 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
                   }}
                   onMouseLeave={(e) => {
                     (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-soft)";
-                    (e.currentTarget as HTMLButtonElement).style.color = "#6a6a6a";
+                    (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-disabled)";
                   }}
                 >
                   ↷ Skip
@@ -449,10 +448,10 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
               disabled={acting}
               style={{
                 padding: "7px 16px",
-                background: "rgba(229,83,75,0.1)",
-                border: "1px solid rgba(229,83,75,0.25)",
+                background: "var(--color-error-dim)",
+                border: "1px solid var(--color-error-border)",
                 borderRadius: "16px",
-                color: "#e5534b",
+                color: "var(--color-error)",
                 fontSize: "12px",
                 fontWeight: 600,
                 cursor: acting ? "not-allowed" : "pointer",
@@ -460,16 +459,16 @@ export function BisectPanel({ repoPath, onClose }: BisectPanelProps) {
               }}
               onMouseEnter={(e) => {
                 if (!acting)
-                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(229,83,75,0.2)";
+                  (e.currentTarget as HTMLButtonElement).style.background = "var(--color-error-border)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(229,83,75,0.1)";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--color-error-dim)";
               }}
             >
               Abort & Reset
             </button>
           ) : (
-            <span style={{ fontSize: "11px", color: "#3a3a3a" }}>
+            <span style={{ fontSize: "11px", color: "var(--color-text-disabled)" }}>
               No active bisect session
             </span>
           )}

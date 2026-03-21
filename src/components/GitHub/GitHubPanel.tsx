@@ -55,7 +55,7 @@ export function GitHubPanel() {
         path: clonePath,
         remote: repo.clone_url,
         icon: "code",
-        color: "#1DB954",
+        color: "#1db954",
       });
       addToast("success", `Cloned and added ${repo.name}`);
     } catch (e) {
@@ -85,7 +85,7 @@ export function GitHubPanel() {
         >
           Enter a GitHub Personal Access Token (PAT) to import repositories and
           view your GitHub account. Create one at{" "}
-          <strong style={{ color: "#1DB954" }}>
+          <strong style={{ color: "var(--color-accent)" }}>
             github.com/settings/tokens
           </strong>{" "}
           with <code>repo</code> scope.
@@ -100,7 +100,7 @@ export function GitHubPanel() {
             style={{
               flex: 1,
               background: "var(--color-bg-elevated)",
-              border: "1px solid #535353",
+              border: "1px solid var(--color-border)",
               borderRadius: "8px",
               padding: "10px 14px",
               color: "var(--color-text-primary)",
@@ -113,7 +113,7 @@ export function GitHubPanel() {
             onClick={handleConnect}
             disabled={!tokenInput.trim()}
             style={{
-              background: "#1DB954",
+              background: "var(--color-accent)",
               border: "none",
               borderRadius: "8px",
               padding: "10px 20px",
@@ -173,7 +173,7 @@ export function GitHubPanel() {
             }}
             style={{
               background: "transparent",
-              border: "1px solid #535353",
+              border: "1px solid var(--color-border)",
               borderRadius: "6px",
               padding: "6px 12px",
               color: "var(--color-text-secondary)",
@@ -189,12 +189,12 @@ export function GitHubPanel() {
       {error && (
         <div
           style={{
-            background: "rgba(232,82,90,0.1)",
-            border: "1px solid rgba(232,82,90,0.3)",
+            background: "var(--color-error-dim)",
+            border: "1px solid var(--color-error-border)",
             borderRadius: "8px",
             padding: "12px 16px",
             marginBottom: "16px",
-            color: "#E8525A",
+            color: "var(--color-error)",
             fontSize: "13px",
           }}
         >
@@ -218,7 +218,7 @@ export function GitHubPanel() {
           style={{
             flex: 1,
             background: "var(--color-bg-elevated)",
-            border: "1px solid #535353",
+            border: "1px solid var(--color-border)",
             borderRadius: "8px",
             padding: "8px 12px",
             color: "var(--color-text-primary)",
@@ -233,7 +233,7 @@ export function GitHubPanel() {
           }}
           style={{
             background: "var(--color-bg-elevated)",
-            border: "1px solid #535353",
+            border: "1px solid var(--color-border)",
             borderRadius: "8px",
             padding: "8px 14px",
             color: "var(--color-text-secondary)",
@@ -311,8 +311,8 @@ export function GitHubPanel() {
                       style={{
                         fontSize: "10px",
                         fontWeight: 600,
-                        background: "rgba(245,166,35,0.2)",
-                        color: "#F5A623",
+                        background: "var(--color-warning-dim)",
+                        color: "var(--color-warning)",
                         padding: "2px 6px",
                         borderRadius: "4px",
                       }}
@@ -344,7 +344,7 @@ export function GitHubPanel() {
               <button
                 onClick={() => handleClone(repo)}
                 style={{
-                  background: "#1DB954",
+                  background: "var(--color-accent)",
                   border: "none",
                   borderRadius: "6px",
                   padding: "6px 12px",

@@ -3,6 +3,7 @@ import { useUIStore } from "../../store/uiStore";
 import { useRepoStore } from "../../store/repoStore";
 import { useToastStore } from "../../store/toastStore";
 import { ipc } from "../../lib/ipc";
+import type { BranchInfo } from "../../types";
 
 function ScanIcon() {
   return (
@@ -241,12 +242,52 @@ export function BottomBar() {
 
   const repoCount = config?.repos.length ?? 0;
 
+  // Branch quick-switch state
+  const { selectedRepoPath } = useUIStore();
+  const statuses = useRepoStore((s) => s.statuses);
+  const refreshStatus = useRepoStore((s) => s.refreshStatus);
+  const selectedStatus = selectedRepoPath ? statuses[selectedRepoPath] : null;
+  const currentBranch = selectedStatus?.current_branch;
+  const selectedRepoName = config?.repos.find((r) => r.path === selectedRepoPath)?.name;
+  const [branchDropdown, setBranchDropdown] = useState(false);
+  const [branches, setBranches] = useState<BranchInfo[]>([]);
+  const [switching, setSwitching] = useState(false);
+
+  const handleOpenBranches = async () => {
+    if (!selectedRepoPath || branchDropdown) {
+      setBranchDropdown(false);
+      return;
+    }
+    try {
+      const data = await ipc.listBranches(selectedRepoPath);
+      setBranches(data.filter((b: BranchInfo) => !b.is_remote));
+      setBranchDropdown(true);
+    } catch {
+      setBranchDropdown(false);
+    }
+  };
+
+  const handleSwitchBranch = async (name: string) => {
+    if (!selectedRepoPath || switching) return;
+    setSwitching(true);
+    setBranchDropdown(false);
+    try {
+      await ipc.switchBranch(selectedRepoPath, name);
+      addToast("success", `Switched to ${name}`);
+      refreshStatus(selectedRepoPath);
+    } catch (e) {
+      addToast("error", `Switch failed: ${e}`);
+    } finally {
+      setSwitching(false);
+    }
+  };
+
   return (
     <div
       style={{
-        height: "64px",
+        height: "56px",
         background: "var(--color-bg-base)",
-        borderTop: "1px solid var(--color-border)",
+        borderTop: "1px solid var(--color-border-subtle)",
         display: "flex",
         alignItems: "center",
         paddingLeft: "24px",
@@ -255,6 +296,8 @@ export function BottomBar() {
         flexShrink: 0,
         position: "relative",
         zIndex: 10,
+        backdropFilter: "blur(20px) saturate(1.4)",
+        WebkitBackdropFilter: "blur(20px) saturate(1.4)",
       }}
     >
       {/* Left: sync status */}
@@ -265,13 +308,13 @@ export function BottomBar() {
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              color: "#1DB954",
+              color: "var(--color-accent)",
             }}
           >
             <div style={{
               width: "7px", height: "7px", borderRadius: "50%",
-              background: "#1DB954",
-              boxShadow: "0 0 6px #1DB954",
+              background: "var(--color-accent)",
+              boxShadow: "0 0 6px var(--color-accent)",
               animation: "pulse 1s ease-in-out infinite",
               flexShrink: 0,
             }} />
@@ -289,7 +332,7 @@ export function BottomBar() {
             </span>
             {lastSynced && lastSyncedCount !== null && (
               <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "1px" }}>
-                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1DB954" }} />
+                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--color-accent)" }} />
                 <span style={{ fontSize: "10px", color: "var(--color-text-disabled)" }}>
                   {lastSyncedCount} {lastSyncedCount === 1 ? "repo" : "repos"} synced
                 </span>
@@ -297,7 +340,7 @@ export function BottomBar() {
             )}
             {!lastSynced && repoCount > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "1px" }}>
-                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1DB954" }} />
+                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--color-accent)" }} />
                 <span style={{ fontSize: "10px", color: "var(--color-text-disabled)" }}>
                   {repoCount} {repoCount === 1 ? "repo" : "repos"} tracked
                 </span>
@@ -306,6 +349,138 @@ export function BottomBar() {
           </div>
         )}
       </div>
+
+      {/* Branch quick-switch */}
+      {selectedRepoPath && currentBranch && (
+        <div style={{ position: "relative", flex: "0 0 auto", display: "flex", alignItems: "center", gap: "6px" }}>
+          <button
+            onClick={handleOpenBranches}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "4px 12px",
+              background: branchDropdown ? "var(--color-accent-dim)" : "var(--overlay-subtle)",
+              border: `1px solid ${branchDropdown ? "var(--color-accent-border)" : "var(--color-border-subtle)"}`,
+              borderRadius: "14px",
+              color: branchDropdown ? "var(--color-accent)" : "var(--color-text-secondary)",
+              fontSize: "11px",
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 120ms ease",
+              maxWidth: "200px",
+            }}
+            onMouseEnter={(e) => {
+              if (!branchDropdown) {
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!branchDropdown) {
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-subtle)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
+              }
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+              <circle cx="6" cy="6" r="3" stroke="currentColor" strokeWidth="2" />
+              <circle cx="6" cy="18" r="3" stroke="currentColor" strokeWidth="2" />
+              <circle cx="18" cy="9" r="3" stroke="currentColor" strokeWidth="2" />
+              <path d="M6 9v6M6 9c0-2 3-3 6-3h3" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {currentBranch}
+            </span>
+            {selectedRepoName && (
+              <span style={{ fontSize: "9px", color: "var(--color-text-disabled)", marginLeft: "2px" }}>
+                ({selectedRepoName})
+              </span>
+            )}
+            <svg width="8" height="8" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+              <path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          {/* Ahead / Behind indicator */}
+          {selectedStatus && (selectedStatus.ahead > 0 || selectedStatus.behind > 0) && (
+            <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "10px", fontWeight: 600 }}>
+              {selectedStatus.ahead > 0 && (
+                <span title={`${selectedStatus.ahead} commit${selectedStatus.ahead > 1 ? "s" : ""} ahead of remote`} style={{ color: "var(--color-info)", display: "flex", alignItems: "center", gap: "2px" }}>
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 9V3M3 5l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  {selectedStatus.ahead}
+                </span>
+              )}
+              {selectedStatus.behind > 0 && (
+                <span title={`${selectedStatus.behind} commit${selectedStatus.behind > 1 ? "s" : ""} behind remote`} style={{ color: "var(--color-warning)", display: "flex", alignItems: "center", gap: "2px" }}>
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 3v6M3 7l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  {selectedStatus.behind}
+                </span>
+              )}
+            </div>
+          )}
+          {branchDropdown && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: "100%",
+                left: 0,
+                marginBottom: "6px",
+                background: "var(--color-bg-elevated)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "10px",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                minWidth: "180px",
+                maxHeight: "240px",
+                overflowY: "auto",
+                padding: "4px 0",
+                zIndex: 100,
+              }}
+            >
+              {branches.map((b) => (
+                <button
+                  key={b.name}
+                  onClick={() => handleSwitchBranch(b.name)}
+                  disabled={b.is_current}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    width: "100%",
+                    padding: "7px 14px",
+                    background: b.is_current ? "var(--color-accent-dim)" : "none",
+                    border: "none",
+                    cursor: b.is_current ? "default" : "pointer",
+                    fontSize: "12px",
+                    color: b.is_current ? "var(--color-accent)" : "var(--color-text-secondary)",
+                    fontWeight: b.is_current ? 700 : 400,
+                    textAlign: "left",
+                    transition: "background 100ms ease",
+                    borderRadius: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!b.is_current) (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-light)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!b.is_current) (e.currentTarget as HTMLButtonElement).style.background = "none";
+                  }}
+                >
+                  {b.is_current && <span style={{ fontSize: "10px" }}>●</span>}
+                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {b.name}
+                  </span>
+                  {b.ahead > 0 && <span style={{ fontSize: "9px", color: "var(--color-info)" }}>↑{b.ahead}</span>}
+                  {b.behind > 0 && <span style={{ fontSize: "9px", color: "var(--color-warning)" }}>↓{b.behind}</span>}
+                </button>
+              ))}
+              {branches.length === 0 && (
+                <div style={{ padding: "12px", textAlign: "center", fontSize: "11px", color: "var(--color-text-disabled)" }}>
+                  No local branches
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Center: progress bar */}
       <div style={{ flex: 1, maxWidth: "400px", margin: "0 auto" }}>
@@ -324,14 +499,14 @@ export function BottomBar() {
                 width: `${progress}%`,
                 background:
                   progress === 100
-                    ? "#1DB954"
-                    : "linear-gradient(90deg, #1DB954, #1ed760)",
+                    ? "var(--color-accent)"
+                    : "linear-gradient(90deg, var(--color-accent), var(--color-accent-hover))",
                 borderRadius: "2px",
                 transition:
                   progress === 100
                     ? "width 400ms ease, background 400ms ease"
                     : "width 300ms ease",
-                boxShadow: "0 0 8px rgba(29,185,84,0.6)",
+                boxShadow: "0 0 8px var(--color-accent-dim)",
               }}
             />
           </div>
@@ -390,7 +565,7 @@ export function BottomBar() {
             gap: "6px",
             padding: "7px 16px",
             background: "var(--overlay-subtle)",
-            color: isGcRunning ? "#6a6a6a" : "#b3b3b3",
+            color: isGcRunning ? "var(--color-text-disabled)" : "var(--color-text-secondary)",
             border: "1px solid var(--color-border)",
             borderRadius: "20px",
             fontSize: "12px",
@@ -426,7 +601,7 @@ export function BottomBar() {
             gap: "6px",
             padding: "7px 16px",
             background: "var(--overlay-subtle)",
-            color: isFetching ? "#6a6a6a" : "#b3b3b3",
+            color: isFetching ? "var(--color-text-disabled)" : "var(--color-text-secondary)",
             border: "1px solid var(--color-border)",
             borderRadius: "20px",
             fontSize: "12px",
@@ -461,7 +636,7 @@ export function BottomBar() {
             alignItems: "center",
             gap: "6px",
             padding: "7px 20px",
-            background: isSyncing ? "rgba(29,185,84,0.5)" : "#1DB954",
+            background: isSyncing ? "var(--color-accent-dim)" : "var(--color-accent)",
             color: "#000",
             border: "none",
             borderRadius: "20px",
@@ -472,17 +647,17 @@ export function BottomBar() {
             transition: "all 150ms ease",
             boxShadow: isSyncing
               ? "none"
-              : "0 2px 12px rgba(29,185,84,0.35)",
+              : "0 2px 12px var(--color-accent-dim)",
           }}
           onMouseEnter={(e) => {
             if (!isSyncing && repoCount > 0) {
-              (e.currentTarget as HTMLButtonElement).style.background = "#1ed760";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--color-accent-hover)";
               (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.03)";
             }
           }}
           onMouseLeave={(e) => {
             if (!isSyncing) {
-              (e.currentTarget as HTMLButtonElement).style.background = "#1DB954";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--color-accent)";
               (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
             }
           }}

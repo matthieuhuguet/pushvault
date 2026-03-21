@@ -57,6 +57,7 @@ export interface CommitInfo {
   insertions: number;
   deletions: number;
   files_changed: number;
+  parent_hashes: string[];
 }
 
 export interface StashEntry {
@@ -138,4 +139,32 @@ export interface SubmoduleInfo {
   head: string;
   status: "clean" | "not_init" | "modified" | "conflict";
   describe: string;
+}
+
+export interface BlameLine {
+  line_no: number;
+  content: string;
+  commit_hash: string;
+  short_hash: string;
+  author: string;
+  date: string;
+  summary: string;
+}
+
+export interface ReflogEntry {
+  index: number;
+  hash: string;
+  short_hash: string;
+  action: string;
+  message: string;
+  date: string;
+}
+
+export interface SearchResult {
+  repo_path: string;
+  repo_name: string;
+  file_path: string;
+  line_number: number | null;
+  line_content: string | null;
+  match_type: "filename" | "content";
 }

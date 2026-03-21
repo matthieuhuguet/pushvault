@@ -95,7 +95,6 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        animation: "fade-in 150ms ease both",
       }}
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
@@ -125,8 +124,8 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
             width: "32px",
             height: "32px",
             borderRadius: "8px",
-            background: "rgba(29,185,84,0.15)",
-            border: "1px solid rgba(29,185,84,0.3)",
+            background: "var(--color-accent-dim)",
+            border: "1px solid var(--color-success-border)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -153,7 +152,7 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
               flexShrink: 0,
             }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#6a6a6a"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-disabled)"; }}
           >
             ✕
           </button>
@@ -164,12 +163,12 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
           {!lfsInstalled ? (
             <div style={{
               padding: "20px",
-              background: "rgba(245,155,0,0.08)",
-              border: "1px solid rgba(245,155,0,0.25)",
+              background: "var(--color-warning-dim)",
+              border: "1px solid var(--color-warning-border)",
               borderRadius: "10px",
               textAlign: "center",
             }}>
-              <p style={{ margin: 0, fontSize: "13px", color: "#f59b00", fontWeight: 600 }}>
+              <p style={{ margin: 0, fontSize: "13px", color: "var(--color-warning)", fontWeight: 600 }}>
                 git-lfs is not installed
               </p>
               <p style={{ margin: "8px 0 0", fontSize: "12px", color: "var(--color-text-muted)" }}>
@@ -214,7 +213,7 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
                     disabled={!newPattern.trim() || adding}
                     style={{
                       padding: "8px 16px",
-                      background: newPattern.trim() ? "#1DB954" : "rgba(29,185,84,0.3)",
+                      background: newPattern.trim() ? "var(--color-accent)" : "var(--color-success-border)",
                       border: "none",
                       borderRadius: "8px",
                       color: "#000",
@@ -245,21 +244,21 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
                         background: "var(--overlay-soft)",
                         border: "1px solid var(--overlay-light)",
                         borderRadius: "12px",
-                        color: "#8a8a8a",
+                        color: "var(--color-text-muted)",
                         fontSize: "11px",
                         fontFamily: "monospace",
                         cursor: "pointer",
                         transition: "all 120ms ease",
                       }}
                       onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(29,185,84,0.1)";
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(29,185,84,0.3)";
-                        (e.currentTarget as HTMLButtonElement).style.color = "#1DB954";
+                        (e.currentTarget as HTMLButtonElement).style.background = "var(--color-success-dim)";
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--color-success-border)";
+                        (e.currentTarget as HTMLButtonElement).style.color = "var(--color-accent)";
                       }}
                       onMouseLeave={(e) => {
                         (e.currentTarget as HTMLButtonElement).style.background = "var(--overlay-soft)";
                         (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--overlay-light)";
-                        (e.currentTarget as HTMLButtonElement).style.color = "#8a8a8a";
+                        (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-muted)";
                       }}
                     >
                       + {s}
@@ -280,7 +279,7 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
                   <p style={{ margin: 0, fontSize: "13px", color: "var(--color-text-disabled)" }}>
                     No LFS patterns tracked yet.
                   </p>
-                  <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#3a3a3a" }}>
+                  <p style={{ margin: "6px 0 0", fontSize: "11px", color: "var(--color-text-disabled)" }}>
                     Add patterns above to store large files via LFS.
                   </p>
                 </div>
@@ -304,7 +303,7 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
                       }}
                     >
                       <span style={{ fontSize: "14px", flexShrink: 0 }}>📦</span>
-                      <code style={{ flex: 1, fontSize: "13px", color: "#1DB954", fontFamily: "monospace" }}>
+                      <code style={{ flex: 1, fontSize: "13px", color: "var(--color-accent)", fontFamily: "monospace" }}>
                         {pat}
                       </code>
                       <button
@@ -312,10 +311,10 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
                         disabled={removing === pat}
                         style={{
                           padding: "3px 10px",
-                          background: "rgba(229,83,75,0.1)",
-                          border: "1px solid rgba(229,83,75,0.2)",
+                          background: "var(--color-error-dim)",
+                          border: "1px solid var(--color-error-border)",
                           borderRadius: "6px",
-                          color: removing === pat ? "#6a6a6a" : "#e5534b",
+                          color: removing === pat ? "var(--color-text-disabled)" : "var(--color-error)",
                           fontSize: "11px",
                           fontWeight: 600,
                           cursor: removing === pat ? "not-allowed" : "pointer",
@@ -324,10 +323,10 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
                         }}
                         onMouseEnter={(e) => {
                           if (removing !== pat)
-                            (e.currentTarget as HTMLButtonElement).style.background = "rgba(229,83,75,0.2)";
+                            (e.currentTarget as HTMLButtonElement).style.background = "var(--color-error-border)";
                         }}
                         onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(229,83,75,0.1)";
+                          (e.currentTarget as HTMLButtonElement).style.background = "var(--color-error-dim)";
                         }}
                       >
                         {removing === pat ? "…" : "Untrack"}
@@ -346,7 +345,7 @@ export function LfsManager({ repoPath, onClose }: LfsManagerProps) {
           borderTop: "1px solid var(--color-border-subtle)",
           flexShrink: 0,
         }}>
-          <p style={{ margin: 0, fontSize: "11px", color: "#3a3a3a", lineHeight: 1.5 }}>
+          <p style={{ margin: 0, fontSize: "11px", color: "var(--color-text-disabled)", lineHeight: 1.5 }}>
             After adding patterns, stage and commit <code style={{ color: "var(--color-text-disabled)" }}>.gitattributes</code> to
             apply LFS tracking to all contributors.
           </p>

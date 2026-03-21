@@ -2,6 +2,7 @@ mod chunk_engine;
 mod config;
 mod error;
 mod git_engine;
+pub mod mcp_server;
 mod models;
 mod state;
 pub mod commands;
@@ -99,6 +100,9 @@ pub fn run() {
             commands::git::fetch_repo,
             commands::git::pull_repo,
             commands::git::push_repo,
+            commands::git::force_push,
+            commands::git::force_push_with_lease,
+            commands::git::pull_with_rebase,
             commands::git::sync_all,
             commands::git::get_staged_files,
             commands::git::get_unstaged_files,
@@ -176,6 +180,9 @@ pub fn run() {
             commands::git::bisect_bad,
             commands::git::bisect_skip,
             commands::git::bisect_reset,
+            // git blame & reflog
+            commands::git::git_blame,
+            commands::git::git_reflog,
             // config commands
             commands::config::load_config_cmd,
             commands::config::save_config_cmd,
@@ -213,6 +220,15 @@ pub fn run() {
             commands::system::delete_stored_token,
             // portable mode
             commands::system::get_portable_mode,
+            // binary file reading (image preview)
+            commands::system::read_file_base64,
+            commands::system::get_file_base64_at_ref,
+            // global search
+            commands::system::search_repos,
+            // MCP integration
+            commands::system::generate_mcp_config,
+            commands::system::install_mcp_config,
+            commands::system::ai_generate_commit_message,
         ])
         .run(tauri::generate_context!())
         .expect("error while running PushVault");

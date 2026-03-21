@@ -31,8 +31,8 @@ function formatDate(iso: string): string {
 }
 
 const STATE_COLOR: Record<string, string> = {
-  open: "#1DB954",
-  closed: "#535353",
+  open: "var(--color-success)",
+  closed: "var(--color-text-disabled)",
   merged: "#a371f7",
 };
 
@@ -57,15 +57,15 @@ function PRIcon({ state, draft }: { state: string; draft: boolean }) {
   if (state === "closed") {
     return (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-        <circle cx="6" cy="6" r="3" stroke="#535353" strokeWidth="2" />
-        <circle cx="6" cy="18" r="3" stroke="#535353" strokeWidth="2" />
-        <path d="M6 9v6" stroke="#535353" strokeWidth="2" strokeLinecap="round" />
-        <path d="M18 6 9 18" stroke="#535353" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="6" cy="6" r="3" stroke="var(--color-text-disabled)" strokeWidth="2" />
+        <circle cx="6" cy="18" r="3" stroke="var(--color-text-disabled)" strokeWidth="2" />
+        <path d="M6 9v6" stroke="var(--color-text-disabled)" strokeWidth="2" strokeLinecap="round" />
+        <path d="M18 6 9 18" stroke="var(--color-text-disabled)" strokeWidth="2" strokeLinecap="round" />
       </svg>
     );
   }
   // open
-  const color = draft ? "#6a6a6a" : "#1DB954";
+  const color = draft ? "#6a6a6a" : "var(--color-success)";
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
       <circle cx="6" cy="6" r="3" stroke={color} strokeWidth="2" strokeDasharray={draft ? "2 2" : undefined} />
@@ -125,7 +125,6 @@ export function GitHubPRsModal({ repoUrl, repoName, onClose }: GitHubPRsModalPro
         justifyContent: "center",
         zIndex: 900,
         padding: "24px",
-        animation: "fade-in 150ms ease both",
       }}
     >
       <div
@@ -157,12 +156,12 @@ export function GitHubPRsModal({ repoUrl, repoName, onClose }: GitHubPRsModalPro
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             {/* PR icon */}
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <circle cx="6" cy="6" r="3" stroke="#1DB954" strokeWidth="2" />
-              <circle cx="6" cy="18" r="3" stroke="#1DB954" strokeWidth="2" />
-              <circle cx="18" cy="18" r="3" stroke="#1DB954" strokeWidth="2" />
-              <path d="M6 9v6" stroke="#1DB954" strokeWidth="2" strokeLinecap="round" />
-              <path d="M18 9v6" stroke="#1DB954" strokeWidth="2" strokeLinecap="round" />
-              <path d="M9 6h6" stroke="#1DB954" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="6" cy="6" r="3" stroke="var(--color-success)" strokeWidth="2" />
+              <circle cx="6" cy="18" r="3" stroke="var(--color-success)" strokeWidth="2" />
+              <circle cx="18" cy="18" r="3" stroke="var(--color-success)" strokeWidth="2" />
+              <path d="M6 9v6" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" />
+              <path d="M18 9v6" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" />
+              <path d="M9 6h6" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" />
             </svg>
             <div>
               <h2 style={{ fontSize: "15px", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>
@@ -227,15 +226,15 @@ export function GitHubPRsModal({ repoUrl, repoName, onClose }: GitHubPRsModalPro
           {loading && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "48px", gap: "10px", color: "var(--color-text-muted)" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 0.8s linear infinite" }}>
-                <circle cx="12" cy="12" r="10" stroke="#333" strokeWidth="3" />
-                <path d="M12 2a10 10 0 0 1 10 10" stroke="#1DB954" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="12" cy="12" r="10" stroke="var(--overlay-medium)" strokeWidth="3" />
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="var(--color-accent)" strokeWidth="3" strokeLinecap="round" />
               </svg>
               Loading pull requests…
             </div>
           )}
 
           {error && (
-            <div style={{ padding: "32px", textAlign: "center", color: "#e5534b", fontSize: "13px" }}>
+            <div style={{ padding: "32px", textAlign: "center", color: "var(--color-error)", fontSize: "13px" }}>
               <p style={{ fontWeight: 600 }}>Failed to load pull requests</p>
               <p style={{ color: "var(--color-text-disabled)", marginTop: "8px" }}>{error}</p>
               {!token && (
@@ -249,19 +248,19 @@ export function GitHubPRsModal({ repoUrl, repoName, onClose }: GitHubPRsModalPro
           {!loading && !error && prs.length === 0 && (
             <div style={{ padding: "48px", textAlign: "center", color: "var(--color-text-disabled)", fontSize: "13px" }}>
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style={{ display: "block", margin: "0 auto 12px", opacity: 0.3 }}>
-                <circle cx="6" cy="6" r="3" stroke="#b3b3b3" strokeWidth="2" />
-                <circle cx="6" cy="18" r="3" stroke="#b3b3b3" strokeWidth="2" />
-                <circle cx="18" cy="18" r="3" stroke="#b3b3b3" strokeWidth="2" />
-                <path d="M6 9v6" stroke="#b3b3b3" strokeWidth="2" strokeLinecap="round" />
-                <path d="M18 9v6" stroke="#b3b3b3" strokeWidth="2" strokeLinecap="round" />
-                <path d="M9 6h6" stroke="#b3b3b3" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="6" cy="6" r="3" stroke="var(--color-text-secondary)" strokeWidth="2" />
+                <circle cx="6" cy="18" r="3" stroke="var(--color-text-secondary)" strokeWidth="2" />
+                <circle cx="18" cy="18" r="3" stroke="var(--color-text-secondary)" strokeWidth="2" />
+                <path d="M6 9v6" stroke="var(--color-text-secondary)" strokeWidth="2" strokeLinecap="round" />
+                <path d="M18 9v6" stroke="var(--color-text-secondary)" strokeWidth="2" strokeLinecap="round" />
+                <path d="M9 6h6" stroke="var(--color-text-secondary)" strokeWidth="2" strokeLinecap="round" />
               </svg>
               No {filter} pull requests
             </div>
           )}
 
           {!loading && !error && prs.map((pr) => {
-            const color = pr.draft ? "#6a6a6a" : (STATE_COLOR[pr.state] ?? "#535353");
+            const color = pr.draft ? "#6a6a6a" : (STATE_COLOR[pr.state] ?? "var(--color-text-disabled)");
             return (
               <div
                 key={pr.number}

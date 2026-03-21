@@ -69,7 +69,7 @@ export function GitignoreEditor({ repoPath, repoName, onClose }: Props) {
         {/* Header */}
         <div style={{
           padding: "20px 24px 16px",
-          borderBottom: "1px solid #3d3d3d",
+          borderBottom: "1px solid var(--color-border-subtle)",
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
           <div>
@@ -80,7 +80,7 @@ export function GitignoreEditor({ repoPath, repoName, onClose }: Props) {
         </div>
 
         {/* Quick-add patterns */}
-        <div style={{ padding: "12px 24px", borderBottom: "1px solid #3d3d3d" }}>
+        <div style={{ padding: "12px 24px", borderBottom: "1px solid var(--color-border)" }}>
           <p style={{ margin: "0 0 8px", fontSize: "11px", color: "var(--color-text-secondary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>
             Quick add
           </p>
@@ -90,7 +90,7 @@ export function GitignoreEditor({ repoPath, repoName, onClose }: Props) {
                 key={p}
                 onClick={() => addPattern(p)}
                 style={{
-                  background: "var(--color-bg-highlight)", border: "1px solid #535353",
+                  background: "var(--color-bg-highlight)", border: "1px solid var(--color-border)",
                   borderRadius: "4px", padding: "4px 8px",
                   color: "var(--color-text-secondary)", fontSize: "11px",
                   cursor: "pointer", fontFamily: "monospace",
@@ -111,8 +111,8 @@ export function GitignoreEditor({ repoPath, repoName, onClose }: Props) {
               spellCheck={false}
               style={{
                 flex: 1, background: "var(--color-bg-card)",
-                border: "1px solid #535353", borderRadius: "8px",
-                padding: "12px", color: "#e0e0e0",
+                border: "1px solid var(--color-border)", borderRadius: "8px",
+                padding: "12px", color: "var(--color-text-primary)",
                 fontSize: "13px", fontFamily: "Cascadia Code, Consolas, monospace",
                 lineHeight: 1.6, resize: "none", outline: "none",
               }}
@@ -123,14 +123,14 @@ export function GitignoreEditor({ repoPath, repoName, onClose }: Props) {
         {/* Footer */}
         <div style={{
           padding: "16px 24px",
-          borderTop: "1px solid #3d3d3d",
+          borderTop: "1px solid var(--color-border)",
           display: "flex", gap: "8px", justifyContent: "flex-end",
         }}>
-          <button onClick={onClose} style={{ background: "transparent", border: "1px solid #535353", borderRadius: "500px", padding: "8px 20px", color: "var(--color-text-primary)", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
+          <button onClick={onClose} style={{ background: "transparent", border: "1px solid var(--color-border)", borderRadius: "500px", padding: "8px 20px", color: "var(--color-text-primary)", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
           <button
             onClick={handleSave}
             disabled={saving}
-            style={{ background: "#1DB954", border: "none", borderRadius: "500px", padding: "8px 20px", color: "#000", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
+            style={{ background: "var(--color-accent)", border: "none", borderRadius: "500px", padding: "8px 20px", color: "#000", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
           >{saving ? "Saving..." : "Save"}</button>
         </div>
       </div>

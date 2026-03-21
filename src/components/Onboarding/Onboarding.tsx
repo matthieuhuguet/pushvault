@@ -58,27 +58,36 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
 
   // Beautiful full-screen onboarding overlay
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 200,
-      background: "#000",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    }}>
-      <div style={{
-        maxWidth: "480px",
-        width: "100%",
-        padding: "0 24px",
-        textAlign: "center",
-      }}>
+    <div
+      className="panel-backdrop-enter"
+      style={{
+        position: "fixed", inset: 0, zIndex: 200,
+        background: "rgba(0, 0, 0, 0.92)",
+        backdropFilter: "blur(24px) saturate(1.5)",
+        WebkitBackdropFilter: "blur(24px) saturate(1.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <div
+        className="scale-in"
+        style={{
+          maxWidth: "480px",
+          width: "100%",
+          padding: "0 24px",
+          textAlign: "center",
+        }}
+      >
         {/* Logo */}
         <div style={{
-          width: "80px", height: "80px",
-          borderRadius: "50%",
-          background: "#1DB954",
+          width: "72px", height: "72px",
+          borderRadius: "18px",
+          background: "var(--color-accent)",
           display: "flex", alignItems: "center", justifyContent: "center",
           margin: "0 auto 32px",
-          fontSize: "32px", fontWeight: 900, color: "#000",
+          fontSize: "28px", fontWeight: 900, color: "#000",
+          boxShadow: "0 0 40px var(--color-accent-dim), 0 4px 16px rgba(0,0,0,0.4)",
         }}>PV</div>
 
         {step === "welcome" && (
@@ -94,7 +103,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
               <button
                 onClick={() => setStep("add-repo")}
                 style={{
-                  background: "#1DB954", border: "none", borderRadius: "500px",
+                  background: "var(--color-accent)", border: "none", borderRadius: "12px",
                   padding: "14px 32px", color: "#000", fontSize: "15px", fontWeight: 700,
                   cursor: "pointer", width: "100%",
                 }}
@@ -104,7 +113,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
               <button
                 onClick={() => setStep("clone")}
                 style={{
-                  background: "transparent", border: "2px solid #535353", borderRadius: "500px",
+                  background: "transparent", border: "2px solid var(--color-text-disabled)", borderRadius: "12px",
                   padding: "14px 32px", color: "var(--color-text-primary)", fontSize: "15px", fontWeight: 700,
                   cursor: "pointer", width: "100%",
                 }}
@@ -115,7 +124,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                 <button
                   onClick={onScan}
                   style={{
-                    background: "transparent", border: "2px solid #535353", borderRadius: "500px",
+                    background: "transparent", border: "2px solid var(--color-text-disabled)", borderRadius: "12px",
                     padding: "14px 32px", color: "var(--color-text-primary)", fontSize: "15px", fontWeight: 700,
                     cursor: "pointer", width: "100%",
                   }}
@@ -154,7 +163,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                   onChange={e => setRepoPath(e.target.value)}
                   placeholder="Repository path..."
                   style={{
-                    flex: 1, background: "var(--color-bg-elevated)", border: "1px solid #535353",
+                    flex: 1, background: "var(--color-bg-elevated)", border: "1px solid var(--color-border)",
                     borderRadius: "8px", padding: "10px 14px", color: "var(--color-text-primary)",
                     fontSize: "14px", outline: "none",
                   }}
@@ -162,7 +171,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                 <button
                   onClick={handlePickFolder}
                   style={{
-                    background: "var(--color-bg-elevated)", border: "1px solid #535353",
+                    background: "var(--color-bg-elevated)", border: "1px solid var(--color-border)",
                     borderRadius: "8px", padding: "10px 16px", color: "var(--color-text-primary)",
                     cursor: "pointer", flexShrink: 0, fontSize: "14px",
                   }}
@@ -175,7 +184,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                 onChange={e => setRepoName(e.target.value)}
                 placeholder="Repository name..."
                 style={{
-                  background: "var(--color-bg-elevated)", border: "1px solid #535353",
+                  background: "var(--color-bg-elevated)", border: "1px solid var(--color-border)",
                   borderRadius: "8px", padding: "10px 14px", color: "var(--color-text-primary)",
                   fontSize: "14px", outline: "none", width: "100%", boxSizing: "border-box",
                 }}
@@ -187,7 +196,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                 onChange={e => setRepoRemote(e.target.value)}
                 placeholder="Remote URL (optional)..."
                 style={{
-                  background: "var(--color-bg-elevated)", border: "1px solid #535353",
+                  background: "var(--color-bg-elevated)", border: "1px solid var(--color-border)",
                   borderRadius: "8px", padding: "10px 14px", color: "var(--color-text-primary)",
                   fontSize: "14px", outline: "none", width: "100%", boxSizing: "border-box",
                 }}
@@ -205,7 +214,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                       onClick={() => setRepoColor(c)}
                       style={{
                         width: "28px", height: "28px", borderRadius: "50%",
-                        background: c, border: repoColor === c ? "3px solid #fff" : "3px solid transparent",
+                        background: c, border: repoColor === c ? "3px solid var(--color-text-primary)" : "3px solid transparent",
                         cursor: "pointer", outline: "none",
                       }}
                     />
@@ -218,8 +227,8 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
               <button
                 onClick={() => setStep("welcome")}
                 style={{
-                  flex: 1, background: "transparent", border: "2px solid #535353",
-                  borderRadius: "500px", padding: "12px", color: "var(--color-text-primary)",
+                  flex: 1, background: "transparent", border: "2px solid var(--color-text-disabled)",
+                  borderRadius: "12px", padding: "12px", color: "var(--color-text-primary)",
                   fontSize: "14px", fontWeight: 700, cursor: "pointer",
                 }}
               >Back</button>
@@ -227,8 +236,8 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
                 onClick={handleAddRepo}
                 disabled={adding || !repoPath || !repoName}
                 style={{
-                  flex: 2, background: "#1DB954", border: "none",
-                  borderRadius: "500px", padding: "12px", color: "#000",
+                  flex: 2, background: "var(--color-accent)", border: "none",
+                  borderRadius: "12px", padding: "12px", color: "#000",
                   fontSize: "14px", fontWeight: 700, cursor: adding ? "not-allowed" : "pointer",
                   opacity: adding ? 0.7 : 1,
                 }}
@@ -253,7 +262,7 @@ export function Onboarding({ onComplete, onScan }: { onComplete: () => void; onS
             <button
               onClick={() => setStep("welcome")}
               style={{
-                background: "#1DB954", border: "none", borderRadius: "500px",
+                background: "var(--color-accent)", border: "none", borderRadius: "12px",
                 padding: "12px 32px", color: "#000", fontSize: "14px", fontWeight: 700,
                 cursor: "pointer", marginTop: "24px",
               }}

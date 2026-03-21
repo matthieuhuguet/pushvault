@@ -39,27 +39,29 @@ export function ConfirmModal() {
 
   return (
     <div
+      className="panel-backdrop-enter"
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.75)",
-        backdropFilter: "blur(4px)",
+        background: "rgba(0,0,0,0.65)",
+        backdropFilter: "blur(12px) saturate(1.2)",
+        WebkitBackdropFilter: "blur(12px) saturate(1.2)",
         zIndex: 1200,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        animation: "fade-in 120ms ease both",
       }}
       onClick={(e) => { if (e.target === e.currentTarget) respond(false); }}
     >
       <div
+        className="scale-in"
         style={{
           width: "420px",
           background: "var(--color-bg-elevated)",
-          border: `1px solid ${isDanger ? "rgba(229,83,75,0.35)" : "var(--color-border)"}`,
-          borderRadius: "14px",
+          border: `1px solid ${isDanger ? "var(--color-error-border)" : "var(--color-border)"}`,
+          borderRadius: "16px",
           padding: "28px",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px var(--overlay-subtle)",
           display: "flex",
           flexDirection: "column",
           gap: "20px",
@@ -72,8 +74,8 @@ export function ConfirmModal() {
               width: "40px",
               height: "40px",
               borderRadius: "10px",
-              background: "rgba(229,83,75,0.15)",
-              border: "1px solid rgba(229,83,75,0.3)",
+              background: "var(--color-error-dim)",
+              border: "1px solid var(--color-error-border)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -90,8 +92,8 @@ export function ConfirmModal() {
                 fontSize: "10px",
                 fontWeight: 700,
                 letterSpacing: "0.08em",
-                color: "#e5534b",
-                background: "rgba(229,83,75,0.12)",
+                color: "var(--color-error)",
+                background: "var(--color-error-dim)",
                 padding: "2px 8px",
                 borderRadius: "6px",
                 marginBottom: "6px",
@@ -126,8 +128,8 @@ export function ConfirmModal() {
           <div>
             <p style={{ margin: "0 0 8px", fontSize: "12px", color: "var(--color-text-muted)" }}>
               Type <code style={{
-                color: "#e5534b",
-                background: "rgba(229,83,75,0.1)",
+                color: "var(--color-error)",
+                background: "var(--color-error-dim)",
                 padding: "1px 6px",
                 borderRadius: "4px",
                 fontFamily: "monospace",
@@ -144,7 +146,7 @@ export function ConfirmModal() {
                 width: "100%",
                 padding: "9px 12px",
                 background: "var(--overlay-soft)",
-                border: `1px solid ${phrase === options.confirmPhrase ? "rgba(229,83,75,0.5)" : "var(--overlay-light)"}`,
+                border: `1px solid ${phrase === options.confirmPhrase ? "var(--color-error-border)" : "var(--overlay-light)"}`,
                 borderRadius: "8px",
                 color: "var(--color-text-primary)",
                 fontSize: "13px",
@@ -166,7 +168,7 @@ export function ConfirmModal() {
               padding: "9px 20px",
               background: "var(--overlay-subtle)",
               border: "1px solid var(--color-border)",
-              borderRadius: "20px",
+              borderRadius: "10px",
               color: "var(--color-text-secondary)",
               fontSize: "13px",
               fontWeight: 600,
@@ -190,10 +192,10 @@ export function ConfirmModal() {
             style={{
               padding: "9px 20px",
               background: isDanger
-                ? (phraseMatch ? "#e5534b" : "rgba(229,83,75,0.3)")
-                : (phraseMatch ? "#1DB954" : "rgba(29,185,84,0.3)"),
+                ? (phraseMatch ? "var(--color-error)" : "var(--color-error-border)")
+                : (phraseMatch ? "var(--color-accent)" : "var(--color-success-border)"),
               border: "none",
-              borderRadius: "20px",
+              borderRadius: "10px",
               color: "var(--color-text-primary)",
               fontSize: "13px",
               fontWeight: 700,

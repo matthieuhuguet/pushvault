@@ -42,7 +42,7 @@ export function ActivityLog() {
         border: "none",
         borderRadius: "20px",
         padding: "5px 14px",
-        color: filter === value ? "#fff" : "#b3b3b3",
+        color: filter === value ? "var(--color-text-primary)" : "var(--color-text-secondary)",
         fontSize: "13px",
         fontWeight: filter === value ? 700 : 400,
         cursor: "pointer",
@@ -60,7 +60,7 @@ export function ActivityLog() {
           padding: "1px 5px",
           borderRadius: "8px",
           background: badgeColor ? `${badgeColor}22` : "var(--overlay-strong)",
-          color: badgeColor ?? "#b3b3b3",
+          color: badgeColor ?? "var(--color-text-secondary)",
         }}>
           {badgeCount}
         </span>
@@ -86,7 +86,7 @@ export function ActivityLog() {
           <p style={{ margin: 0, fontSize: "13px", color: "var(--color-text-secondary)" }}>
             {entries.length} total {entries.length === 1 ? "entry" : "entries"}
             {destructiveCount > 0 && (
-              <span style={{ color: "#f59b00", marginLeft: "8px" }}>
+              <span style={{ color: "var(--color-warning)", marginLeft: "8px" }}>
                 · {destructiveCount} destructive
               </span>
             )}
@@ -104,8 +104,8 @@ export function ActivityLog() {
           }}>
             {filterBtn("All", "all")}
             {filterBtn("Success", "success")}
-            {filterBtn("Error", "error", errorCount, "#e5534b")}
-            {filterBtn("Destructive", "destructive", destructiveCount, "#f59b00")}
+            {filterBtn("Error", "error", errorCount, "var(--color-error)")}
+            {filterBtn("Destructive", "destructive", destructiveCount, "var(--color-warning)")}
           </div>
 
           {/* Export */}
@@ -117,7 +117,7 @@ export function ActivityLog() {
               border: "1px solid var(--color-border)",
               borderRadius: "6px",
               padding: "7px 14px",
-              color: entries.length === 0 ? "#535353" : "#b3b3b3",
+              color: entries.length === 0 ? "var(--color-text-disabled)" : "var(--color-text-secondary)",
               fontSize: "13px",
               cursor: entries.length === 0 ? "not-allowed" : "pointer",
             }}
@@ -132,11 +132,11 @@ export function ActivityLog() {
             style={{
               background: entries.length === 0
                 ? "rgba(229,83,75,0.05)"
-                : "rgba(229,83,75,0.12)",
-              border: "1px solid rgba(229,83,75,0.3)",
+                : "var(--color-error-dim)",
+              border: "1px solid var(--color-error-border)",
               borderRadius: "6px",
               padding: "7px 14px",
-              color: entries.length === 0 ? "#535353" : "#e5534b",
+              color: entries.length === 0 ? "var(--color-text-disabled)" : "var(--color-error)",
               fontSize: "13px",
               cursor: entries.length === 0 ? "not-allowed" : "pointer",
             }}
@@ -158,7 +158,7 @@ export function ActivityLog() {
           color: "var(--color-text-disabled)",
         }}>
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.3 }}>
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="#b3b3b3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text-primary)", margin: 0 }}>
             {filter === "all" ? "No activity yet" : `No ${filter} entries`}
@@ -193,7 +193,7 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
     return () => clearInterval(id);
   }, []);
 
-  const dotColor = entry.success ? "#1DB954" : "#e5534b";
+  const dotColor = entry.success ? "var(--color-success)" : "var(--color-error)";
 
   return (
     <div
@@ -235,8 +235,8 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
           marginTop: "5px",
           flexShrink: 0,
           boxShadow: entry.success
-            ? "0 0 6px rgba(29,185,84,0.5)"
-            : "0 0 6px rgba(229,83,75,0.5)",
+            ? "0 0 6px var(--color-success-dim)"
+            : "0 0 6px var(--color-error-dim)",
         }} />
       )}
 
@@ -255,7 +255,7 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
           <span style={{
             fontSize: "11px",
             background: entry.isDestructive ? "rgba(245,155,0,0.1)" : "var(--overlay-light)",
-            color: entry.isDestructive ? "#f59b00" : "#b3b3b3",
+            color: entry.isDestructive ? "var(--color-warning)" : "var(--color-text-secondary)",
             padding: "2px 8px",
             borderRadius: "10px",
           }}>
@@ -265,8 +265,8 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
             <span style={{
               fontSize: "10px",
               fontWeight: 700,
-              color: "#f59b00",
-              background: "rgba(245,155,0,0.1)",
+              color: "var(--color-warning)",
+              background: "var(--color-warning-dim)",
               padding: "1px 6px",
               borderRadius: "8px",
               letterSpacing: "0.04em",
@@ -277,7 +277,7 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
           <span style={{
             fontSize: "11px",
             fontWeight: 600,
-            color: entry.success ? "#1DB954" : "#e5534b",
+            color: entry.success ? "var(--color-success)" : "var(--color-error)",
           }}>
             {entry.success ? "✓" : "✕"}
           </span>

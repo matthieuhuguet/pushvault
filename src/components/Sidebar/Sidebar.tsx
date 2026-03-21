@@ -66,7 +66,11 @@ function NavItem({ tab, activeTab, label, icon, onClick }: NavItemProps) {
   const isActive = tab === activeTab;
   const [hovered, setHovered] = useState(false);
 
-  const iconColor = isActive ? "var(--color-text-primary)" : hovered ? "var(--color-text-primary)" : "var(--color-text-secondary)";
+  const iconColor = isActive
+    ? "var(--color-text-primary)"
+    : hovered
+      ? "var(--color-text-primary)"
+      : "var(--color-text-secondary)";
 
   return (
     <button
@@ -76,32 +80,39 @@ function NavItem({ tab, activeTab, label, icon, onClick }: NavItemProps) {
       title={label}
       style={{
         position: "relative",
-        width: "64px",
-        height: "56px",
+        width: "56px",
+        height: "52px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: "4px",
-        background: "none",
+        gap: "3px",
+        background: isActive
+          ? "var(--overlay-subtle)"
+          : hovered
+            ? "var(--overlay-soft)"
+            : "none",
         border: "none",
+        borderRadius: "12px",
         cursor: "pointer",
-        transition: "all 120ms ease",
+        transition: "all 150ms ease",
         padding: 0,
+        margin: "2px 4px",
       }}
     >
-      {/* Active indicator — left border */}
+      {/* Active indicator — left accent bar */}
       {isActive && (
         <div
           style={{
             position: "absolute",
-            left: 0,
+            left: "-4px",
             top: "50%",
             transform: "translateY(-50%)",
             width: "3px",
-            height: "32px",
-            background: "#1DB954",
+            height: "24px",
+            background: "var(--color-accent)",
             borderRadius: "0 3px 3px 0",
+            boxShadow: "0 0 8px var(--color-accent-dim)",
           }}
         />
       )}
@@ -109,8 +120,8 @@ function NavItem({ tab, activeTab, label, icon, onClick }: NavItemProps) {
       {/* Icon */}
       <div
         style={{
-          transition: "transform 120ms ease",
-          transform: hovered && !isActive ? "scale(1.1)" : "scale(1)",
+          transition: "transform 150ms ease",
+          transform: hovered && !isActive ? "scale(1.08)" : "scale(1)",
         }}
       >
         {icon(iconColor)}
@@ -119,11 +130,11 @@ function NavItem({ tab, activeTab, label, icon, onClick }: NavItemProps) {
       {/* Label */}
       <span
         style={{
-          fontSize: "10px",
-          fontWeight: isActive ? 700 : 400,
+          fontSize: "9px",
+          fontWeight: isActive ? 700 : 500,
           color: iconColor,
-          letterSpacing: "0.02em",
-          transition: "color 120ms ease",
+          letterSpacing: "0.03em",
+          transition: "color 150ms ease",
         }}
       >
         {label}
@@ -183,6 +194,7 @@ interface SidebarProps {
 export function Sidebar({ activeTab, setActiveTab, onClone }: SidebarProps) {
   return (
     <nav
+      data-tauri-drag-region
       style={{
         width: "64px",
         height: "100vh",
@@ -190,31 +202,34 @@ export function Sidebar({ activeTab, setActiveTab, onClone }: SidebarProps) {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        paddingTop: "8px",
-        paddingBottom: "8px",
+        paddingTop: "12px",
+        paddingBottom: "12px",
         flexShrink: 0,
         borderRight: "1px solid var(--color-border-subtle)",
         zIndex: 10,
+        backdropFilter: "blur(20px) saturate(1.4)",
+        WebkitBackdropFilter: "blur(20px) saturate(1.4)",
       }}
     >
       {/* Logo */}
       <div
         style={{
-          width: "36px",
-          height: "36px",
-          borderRadius: "50%",
-          background: "#1DB954",
+          width: "34px",
+          height: "34px",
+          borderRadius: "10px",
+          background: "var(--color-accent)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           marginBottom: "16px",
           flexShrink: 0,
-          boxShadow: "0 0 20px rgba(29,185,84,0.35)",
+          boxShadow: "0 0 20px var(--color-accent-dim), 0 2px 8px rgba(0,0,0,0.3)",
+          transition: "transform 200ms ease, box-shadow 200ms ease",
         }}
       >
         <span
           style={{
-            fontSize: "14px",
+            fontSize: "13px",
             fontWeight: 800,
             color: "#000",
             letterSpacing: "-0.5px",
@@ -228,7 +243,7 @@ export function Sidebar({ activeTab, setActiveTab, onClone }: SidebarProps) {
       {/* Divider */}
       <div
         style={{
-          width: "32px",
+          width: "28px",
           height: "1px",
           background: "var(--color-border)",
           marginBottom: "8px",

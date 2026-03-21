@@ -1,31 +1,34 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { Header } from "./components/Header/Header";
 import { Dashboard } from "./components/Dashboard/Dashboard";
 import { BottomBar } from "./components/BottomBar/BottomBar";
 import { ToastContainer } from "./components/Toast/ToastContainer";
-import { StagingArea } from "./components/Staging/StagingArea";
-import { CommitHistory } from "./components/History/CommitHistory";
-import { StashManager } from "./components/Stash/StashManager";
-import { BranchManager } from "./components/BranchManager/BranchManager";
-import { ConflictResolver } from "./components/ConflictResolver/ConflictResolver";
-import { TagManager } from "./components/Tags/TagManager";
-import { ActivityLog } from "./components/ActivityLog/ActivityLog";
-import { Settings } from "./components/Settings/Settings";
-import { Onboarding } from "./components/Onboarding/Onboarding";
-import { KeyboardHelp } from "./components/KeyboardHelp/KeyboardHelp";
-import { CloneDialog } from "./components/Clone/CloneDialog";
-import { GitignoreEditor } from "./components/GitignoreEditor/GitignoreEditor";
-import { ScanRepos } from "./components/ScanRepos/ScanRepos";
-import { WorktreeManager } from "./components/WorktreeManager/WorktreeManager";
-import { SubmoduleManager } from "./components/SubmoduleManager/SubmoduleManager";
-import { CommandPalette } from "./components/CommandPalette/CommandPalette";
 import { ConfirmModal } from "./components/ConfirmModal/ConfirmModal";
 import { PromptModal } from "./components/PromptModal/PromptModal";
-import { LfsManager } from "./components/LfsManager/LfsManager";
-import { BisectPanel } from "./components/BisectPanel/BisectPanel";
-import { RebasePanel } from "./components/RebasePanel/RebasePanel";
+
+// Lazy-loaded overlay panels (code split)
+const StagingArea = lazy(() => import("./components/Staging/StagingArea").then(m => ({ default: m.StagingArea })));
+const CommitHistory = lazy(() => import("./components/History/CommitHistory").then(m => ({ default: m.CommitHistory })));
+const StashManager = lazy(() => import("./components/Stash/StashManager").then(m => ({ default: m.StashManager })));
+const BranchManager = lazy(() => import("./components/BranchManager/BranchManager").then(m => ({ default: m.BranchManager })));
+const ConflictResolver = lazy(() => import("./components/ConflictResolver/ConflictResolver").then(m => ({ default: m.ConflictResolver })));
+const TagManager = lazy(() => import("./components/Tags/TagManager").then(m => ({ default: m.TagManager })));
+const ActivityLog = lazy(() => import("./components/ActivityLog/ActivityLog").then(m => ({ default: m.ActivityLog })));
+const Settings = lazy(() => import("./components/Settings/Settings").then(m => ({ default: m.Settings })));
+const Onboarding = lazy(() => import("./components/Onboarding/Onboarding").then(m => ({ default: m.Onboarding })));
+const KeyboardHelp = lazy(() => import("./components/KeyboardHelp/KeyboardHelp").then(m => ({ default: m.KeyboardHelp })));
+const CloneDialog = lazy(() => import("./components/Clone/CloneDialog").then(m => ({ default: m.CloneDialog })));
+const GitignoreEditor = lazy(() => import("./components/GitignoreEditor/GitignoreEditor").then(m => ({ default: m.GitignoreEditor })));
+const ScanRepos = lazy(() => import("./components/ScanRepos/ScanRepos").then(m => ({ default: m.ScanRepos })));
+const WorktreeManager = lazy(() => import("./components/WorktreeManager/WorktreeManager").then(m => ({ default: m.WorktreeManager })));
+const SubmoduleManager = lazy(() => import("./components/SubmoduleManager/SubmoduleManager").then(m => ({ default: m.SubmoduleManager })));
+const CommandPalette = lazy(() => import("./components/CommandPalette/CommandPalette").then(m => ({ default: m.CommandPalette })));
+const LfsManager = lazy(() => import("./components/LfsManager/LfsManager").then(m => ({ default: m.LfsManager })));
+const BisectPanel = lazy(() => import("./components/BisectPanel/BisectPanel").then(m => ({ default: m.BisectPanel })));
+const RebasePanel = lazy(() => import("./components/RebasePanel/RebasePanel").then(m => ({ default: m.RebasePanel })));
+const GlobalSearch = lazy(() => import("./components/GlobalSearch/GlobalSearch").then(m => ({ default: m.GlobalSearch })));
 import { useRepoStore } from "./store/repoStore";
 import { useUIStore } from "./store/uiStore";
 import { useKeyboard } from "./hooks/useKeyboard";
@@ -43,6 +46,7 @@ export default function App() {
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [showClone, setShowClone] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
 
   const showOnboarding = !loading && config !== null && config.repos.length === 0 && !onboardingDismissed;
 
@@ -151,6 +155,11 @@ export default function App() {
     "ctrl+n": () => setShowClone(true),
     "ctrl+p": () => setShowCommandPalette(true),
     "ctrl+shift+p": () => setShowCommandPalette(true),
+    "ctrl+shift+f": () => setShowGlobalSearch(true),
+    "alt+1": () => setActiveTab("dashboard"),
+    "alt+2": () => setActiveTab("history"),
+    "alt+3": () => setActiveTab("activity"),
+    "alt+4": () => setActiveTab("settings"),
     "escape": () => {
       const { activePanel } = useUIStore.getState();
       if (activePanel) {
@@ -165,12 +174,21 @@ export default function App() {
   const repoConfig = config?.repos.find((r) => r.path === selectedRepoPath);
   const repoName = repoConfig?.name;
 
+  // Determine if any overlay panel is open (for backdrop)
+  const hasOverlayPanel = activePanel !== null && (selectedRepoPath || activePanel === "scan");
+
+  const lazyFallback = (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--color-text-muted)", fontSize: 13 }}>
+      Loading...
+    </div>
+  );
+
   return (
     <div
       style={{
         display: "flex",
         height: "100vh",
-        background: theme === "light" ? "var(--color-bg-primary)" : "rgba(18, 18, 18, 0.92)",
+        background: theme === "light" ? "var(--color-bg-primary)" : "transparent",
         color: "var(--color-text-primary)",
         fontFamily: "'Circular', 'Gotham', system-ui, -apple-system, sans-serif",
         overflow: "hidden",
@@ -198,7 +216,6 @@ export default function App() {
             flex: 1,
             overflow: "auto",
             padding: "24px",
-            background: "var(--color-bg-primary)",
           }}
         >
           {activeTab === "dashboard" && <Dashboard />}
@@ -211,27 +228,75 @@ export default function App() {
                 justifyContent: "center",
                 height: "100%",
                 flexDirection: "column",
-                gap: "16px",
+                gap: "20px",
                 color: "var(--color-text-disabled)",
               }}
             >
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.3 }}>
-                <circle cx="12" cy="12" r="9" stroke="#b3b3b3" strokeWidth="2" />
-                <polyline points="12 7 12 12 15 15" stroke="#b3b3b3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text-primary)" }}>
-                Global History
-              </p>
-              <p style={{ fontSize: "13px" }}>
-                Select a repository from the Dashboard to view its history.
-              </p>
+              <div
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "20px",
+                  background: "var(--overlay-subtle)",
+                  border: "1px solid var(--color-border-subtle)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.4 }}>
+                  <circle cx="12" cy="12" r="9" stroke="var(--color-text-secondary)" strokeWidth="1.5" />
+                  <polyline points="12 7 12 12 15 15" stroke="var(--color-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <p style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "6px" }}>
+                  Commit History
+                </p>
+                <p style={{ fontSize: "13px", lineHeight: 1.5, maxWidth: "320px" }}>
+                  Right-click a repository and select "History" to explore commits, diffs, and more.
+                </p>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  marginTop: "4px",
+                }}
+              >
+                <kbd style={{
+                  fontSize: "11px",
+                  color: "var(--color-text-muted)",
+                  background: "var(--overlay-subtle)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "6px",
+                  padding: "4px 10px",
+                }}>
+                  Right-click repo card
+                </kbd>
+                <span style={{ color: "var(--color-text-disabled)", fontSize: "11px", lineHeight: "28px" }}>or</span>
+                <kbd style={{
+                  fontSize: "11px",
+                  color: "var(--color-text-muted)",
+                  background: "var(--overlay-subtle)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "6px",
+                  padding: "4px 10px",
+                }}>
+                  Ctrl+P → History
+                </kbd>
+              </div>
             </div>
           )}
 
-          {activeTab === "activity" && <ActivityLog />}
+          {activeTab === "activity" && (
+            <Suspense fallback={lazyFallback}><ActivityLog /></Suspense>
+          )}
 
           {activeTab === "settings" && (
-            <Settings onClose={() => setActiveTab("dashboard")} />
+            <Suspense fallback={lazyFallback}>
+              <Settings onClose={() => setActiveTab("dashboard")} />
+            </Suspense>
           )}
         </main>
 
@@ -239,125 +304,172 @@ export default function App() {
         <BottomBar />
       </div>
 
-      {/* Overlay panels */}
-      {activePanel === "staging" && selectedRepoPath && (
-        <StagingArea />
-      )}
-
-      {activePanel === "history" && selectedRepoPath && (
-        <CommitHistory
-          repoPath={selectedRepoPath}
-          repoName={repoName}
-          onClose={() => setActivePanel(null)}
+      {/* Overlay panels with animated backdrop */}
+      {hasOverlayPanel && (
+        <div
+          className="panel-backdrop-enter"
+          onClick={() => setActivePanel(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "var(--overlay-backdrop-light)",
+            zIndex: 499,
+          }}
         />
       )}
 
-      {activePanel === "stash" && selectedRepoPath && (
-        <StashManager
-          repoPath={selectedRepoPath}
-          repoName={repoName}
-          onClose={() => setActivePanel(null)}
-        />
-      )}
+      <Suspense fallback={lazyFallback}>
+        {activePanel === "staging" && selectedRepoPath && (
+          <div className="panel-overlay-enter">
+            <StagingArea />
+          </div>
+        )}
 
-      {activePanel === "branches" && selectedRepoPath && (
-        <BranchManager
-          repoPath={selectedRepoPath}
-          repoName={repoName}
-          onClose={() => setActivePanel(null)}
-        />
-      )}
+        {activePanel === "history" && selectedRepoPath && (
+          <div className="panel-overlay-enter">
+            <CommitHistory
+              repoPath={selectedRepoPath}
+              repoName={repoName}
+              onClose={() => setActivePanel(null)}
+            />
+          </div>
+        )}
 
-      {activePanel === "conflicts" && selectedRepoPath && (
-        <ConflictResolver
-          repoPath={selectedRepoPath}
-          repoName={repoName}
-          onClose={() => setActivePanel(null)}
-        />
-      )}
+        {activePanel === "stash" && selectedRepoPath && (
+          <div className="panel-overlay-enter">
+            <StashManager
+              repoPath={selectedRepoPath}
+              repoName={repoName}
+              onClose={() => setActivePanel(null)}
+            />
+          </div>
+        )}
 
-      {activePanel === "tags" && selectedRepoPath && (
-        <TagManager
-          repoPath={selectedRepoPath}
-          repoName={repoName}
-          onClose={() => setActivePanel(null)}
-        />
-      )}
+        {activePanel === "branches" && selectedRepoPath && (
+          <div className="panel-overlay-enter">
+            <BranchManager
+              repoPath={selectedRepoPath}
+              repoName={repoName}
+              onClose={() => setActivePanel(null)}
+            />
+          </div>
+        )}
 
-      {activePanel === "gitignore" && selectedRepoPath && (
-        <GitignoreEditor
-          repoPath={selectedRepoPath}
-          repoName={repoName}
-          onClose={() => setActivePanel(null)}
-        />
-      )}
+        {activePanel === "conflicts" && selectedRepoPath && (
+          <div className="panel-overlay-enter">
+            <ConflictResolver
+              repoPath={selectedRepoPath}
+              repoName={repoName}
+              onClose={() => setActivePanel(null)}
+            />
+          </div>
+        )}
 
-      {activePanel === "scan" && (
-        <ScanRepos onClose={() => setActivePanel(null)} />
-      )}
+        {activePanel === "tags" && selectedRepoPath && (
+          <div className="panel-overlay-enter">
+            <TagManager
+              repoPath={selectedRepoPath}
+              repoName={repoName}
+              onClose={() => setActivePanel(null)}
+            />
+          </div>
+        )}
 
-      {activePanel === "worktrees" && selectedRepoPath && (
-        <WorktreeManager
-          repoPath={selectedRepoPath}
-          onClose={() => setActivePanel(null)}
-        />
-      )}
+        {activePanel === "gitignore" && selectedRepoPath && (
+          <div className="panel-overlay-enter">
+            <GitignoreEditor
+              repoPath={selectedRepoPath}
+              repoName={repoName}
+              onClose={() => setActivePanel(null)}
+            />
+          </div>
+        )}
 
-      {activePanel === "submodules" && selectedRepoPath && (
-        <SubmoduleManager
-          repoPath={selectedRepoPath}
-          onClose={() => setActivePanel(null)}
-        />
-      )}
+        {activePanel === "scan" && (
+          <div className="panel-overlay-enter">
+            <ScanRepos onClose={() => setActivePanel(null)} />
+          </div>
+        )}
 
-      {activePanel === "lfs" && selectedRepoPath && (
-        <LfsManager
-          repoPath={selectedRepoPath}
-          onClose={() => setActivePanel(null)}
-        />
-      )}
+        {activePanel === "worktrees" && selectedRepoPath && (
+          <div className="panel-overlay-enter">
+            <WorktreeManager
+              repoPath={selectedRepoPath}
+              onClose={() => setActivePanel(null)}
+            />
+          </div>
+        )}
 
-      {activePanel === "bisect" && selectedRepoPath && (
-        <BisectPanel
-          repoPath={selectedRepoPath}
-          onClose={() => setActivePanel(null)}
-        />
-      )}
+        {activePanel === "submodules" && selectedRepoPath && (
+          <div className="panel-overlay-enter">
+            <SubmoduleManager
+              repoPath={selectedRepoPath}
+              onClose={() => setActivePanel(null)}
+            />
+          </div>
+        )}
 
-      {activePanel === "rebase" && selectedRepoPath && (
-        <RebasePanel
-          repoPath={selectedRepoPath}
-          onClose={() => setActivePanel(null)}
-        />
-      )}
+        {activePanel === "lfs" && selectedRepoPath && (
+          <div className="panel-overlay-enter">
+            <LfsManager
+              repoPath={selectedRepoPath}
+              onClose={() => setActivePanel(null)}
+            />
+          </div>
+        )}
 
-      {/* Onboarding wizard */}
-      {showOnboarding && (
-        <Onboarding
-          onComplete={() => setOnboardingDismissed(true)}
-          onScan={() => { setOnboardingDismissed(true); setActivePanel("scan"); }}
-        />
-      )}
+        {activePanel === "bisect" && selectedRepoPath && (
+          <div className="panel-overlay-enter">
+            <BisectPanel
+              repoPath={selectedRepoPath}
+              onClose={() => setActivePanel(null)}
+            />
+          </div>
+        )}
 
-      {/* Keyboard shortcut help */}
-      {showKeyboardHelp && (
-        <KeyboardHelp onClose={() => setShowKeyboardHelp(false)} />
-      )}
+        {activePanel === "rebase" && selectedRepoPath && (
+          <div className="panel-overlay-enter">
+            <RebasePanel
+              repoPath={selectedRepoPath}
+              onClose={() => setActivePanel(null)}
+            />
+          </div>
+        )}
 
-      {/* Clone dialog */}
-      {showClone && (
-        <CloneDialog onClose={() => setShowClone(false)} />
-      )}
+        {/* Onboarding wizard */}
+        {showOnboarding && (
+          <Onboarding
+            onComplete={() => setOnboardingDismissed(true)}
+            onScan={() => { setOnboardingDismissed(true); setActivePanel("scan"); }}
+          />
+        )}
 
-      {/* Command palette */}
-      {showCommandPalette && (
-        <CommandPalette
-          onClose={() => setShowCommandPalette(false)}
-          onShowKeyboardHelp={() => { setShowCommandPalette(false); setShowKeyboardHelp(true); }}
-          onShowClone={() => { setShowCommandPalette(false); setShowClone(true); }}
-          onShowScan={() => { setShowCommandPalette(false); setActivePanel("scan"); }}
-        />
-      )}
+        {/* Keyboard shortcut help */}
+        {showKeyboardHelp && (
+          <KeyboardHelp onClose={() => setShowKeyboardHelp(false)} />
+        )}
+
+        {/* Clone dialog */}
+        {showClone && (
+          <CloneDialog onClose={() => setShowClone(false)} />
+        )}
+
+        {/* Command palette */}
+        {showCommandPalette && (
+          <CommandPalette
+            onClose={() => setShowCommandPalette(false)}
+            onShowKeyboardHelp={() => { setShowCommandPalette(false); setShowKeyboardHelp(true); }}
+            onShowClone={() => { setShowCommandPalette(false); setShowClone(true); }}
+            onShowScan={() => { setShowCommandPalette(false); setActivePanel("scan"); }}
+            onShowGlobalSearch={() => { setShowCommandPalette(false); setShowGlobalSearch(true); }}
+          />
+        )}
+
+        {/* Global search */}
+        {showGlobalSearch && (
+          <GlobalSearch onClose={() => setShowGlobalSearch(false)} />
+        )}
+      </Suspense>
 
       {/* Toast notifications */}
       <ToastContainer />

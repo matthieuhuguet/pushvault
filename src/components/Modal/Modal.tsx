@@ -46,7 +46,6 @@ export function Modal({
         justifyContent: "center",
         zIndex: 600,
         padding: "16px",
-        animation: "fade-in 150ms ease both",
       }}
     >
       <div

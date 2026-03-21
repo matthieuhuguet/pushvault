@@ -18,9 +18,10 @@ interface Props {
   onShowKeyboardHelp: () => void;
   onShowClone: () => void;
   onShowScan: () => void;
+  onShowGlobalSearch: () => void;
 }
 
-export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onShowScan }: Props) {
+export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onShowScan, onShowGlobalSearch }: Props) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -127,6 +128,17 @@ export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onSho
           onShowKeyboardHelp();
         },
       },
+      {
+        id: "global-search",
+        label: "Search Across All Repos",
+        description: "Find files and content globally",
+        category: "Global",
+        shortcut: "Ctrl+Shift+F",
+        action: () => {
+          onClose();
+          onShowGlobalSearch();
+        },
+      },
     ];
 
     const repoCommands: Command[] = (config?.repos ?? []).flatMap((repo) => [
@@ -138,7 +150,7 @@ export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onSho
         action: async () => {
           onClose();
           try {
-            await ipc.pushRepo(repo.path, "chore: push via PushVault");
+            await ipc.pushRepo(repo.path);
             addToast("success", `Pushed ${repo.name}`);
             refreshAllStatuses();
           } catch (e) {
@@ -229,6 +241,94 @@ export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onSho
         },
       },
       {
+        id: `stash-${repo.path}`,
+        label: `Stashes · ${repo.name}`,
+        description: "View and manage stashes",
+        category: "Repository",
+        action: () => {
+          onClose();
+          setSelectedRepoPath(repo.path);
+          setActivePanel("stash");
+        },
+      },
+      {
+        id: `branches-${repo.path}`,
+        label: `Branches · ${repo.name}`,
+        description: "Create, switch, merge branches",
+        category: "Repository",
+        action: () => {
+          onClose();
+          setSelectedRepoPath(repo.path);
+          setActivePanel("branches");
+        },
+      },
+      {
+        id: `tags-${repo.path}`,
+        label: `Tags · ${repo.name}`,
+        description: "View and create tags",
+        category: "Repository",
+        action: () => {
+          onClose();
+          setSelectedRepoPath(repo.path);
+          setActivePanel("tags");
+        },
+      },
+      {
+        id: `worktrees-${repo.path}`,
+        label: `Worktrees · ${repo.name}`,
+        description: "Manage git worktrees",
+        category: "Repository",
+        action: () => {
+          onClose();
+          setSelectedRepoPath(repo.path);
+          setActivePanel("worktrees");
+        },
+      },
+      {
+        id: `submodules-${repo.path}`,
+        label: `Submodules · ${repo.name}`,
+        description: "Manage submodules",
+        category: "Repository",
+        action: () => {
+          onClose();
+          setSelectedRepoPath(repo.path);
+          setActivePanel("submodules");
+        },
+      },
+      {
+        id: `lfs-${repo.path}`,
+        label: `Git LFS · ${repo.name}`,
+        description: "Large file storage tracking",
+        category: "Repository",
+        action: () => {
+          onClose();
+          setSelectedRepoPath(repo.path);
+          setActivePanel("lfs");
+        },
+      },
+      {
+        id: `bisect-${repo.path}`,
+        label: `Bisect · ${repo.name}`,
+        description: "Binary search for bugs",
+        category: "Repository",
+        action: () => {
+          onClose();
+          setSelectedRepoPath(repo.path);
+          setActivePanel("bisect");
+        },
+      },
+      {
+        id: `rebase-${repo.path}`,
+        label: `Interactive Rebase · ${repo.name}`,
+        description: "Reorder, squash, edit commits",
+        category: "Repository",
+        action: () => {
+          onClose();
+          setSelectedRepoPath(repo.path);
+          setActivePanel("rebase");
+        },
+      },
+      {
         id: `gc-${repo.path}`,
         label: `Git GC · ${repo.name}`,
         description: "Run git garbage collection",
@@ -266,7 +366,7 @@ export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onSho
   }, [config, onClose, onShowClone, onShowKeyboardHelp, onShowScan, addToast, refreshAllStatuses, setActivePanel, setActiveTab, setSelectedRepoPath]);
 
   const filtered = useMemo(() => {
-    if (!query) return commands.slice(0, 12);
+    if (!query) return commands.slice(0, 20);
     const q = query.toLowerCase();
     return commands
       .filter(
@@ -275,7 +375,7 @@ export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onSho
           c.description?.toLowerCase().includes(q) ||
           c.category.toLowerCase().includes(q)
       )
-      .slice(0, 12);
+      .slice(0, 20);
   }, [commands, query]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -312,7 +412,7 @@ export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onSho
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#2a2a2a",
+          background: "var(--color-bg-elevated)",
           borderRadius: "12px",
           width: "560px",
           maxWidth: "90vw",
@@ -327,7 +427,7 @@ export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onSho
             display: "flex",
             alignItems: "center",
             padding: "0 16px",
-            borderBottom: "1px solid #3d3d3d",
+            borderBottom: "1px solid var(--color-border-subtle)",
           }}
         >
           <svg
@@ -364,7 +464,7 @@ export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onSho
           <kbd
             style={{
               background: "var(--color-bg-highlight)",
-              border: "1px solid #535353",
+              border: "1px solid var(--color-border)",
               borderRadius: "4px",
               padding: "2px 6px",
               fontSize: "11px",
@@ -398,9 +498,9 @@ export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onSho
                   alignItems: "center",
                   padding: "10px 16px",
                   cursor: "pointer",
-                  background: i === selected ? "rgba(29,185,84,0.1)" : "transparent",
+                  background: i === selected ? "var(--color-accent-dim)" : "transparent",
                   borderLeft:
-                    i === selected ? "2px solid #1DB954" : "2px solid transparent",
+                    i === selected ? "2px solid var(--color-accent)" : "2px solid transparent",
                   gap: "12px",
                 }}
                 onMouseEnter={() => setSelected(i)}
@@ -447,7 +547,7 @@ export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onSho
                   <kbd
                     style={{
                       background: "var(--color-bg-highlight)",
-                      border: "1px solid #535353",
+                      border: "1px solid var(--color-border)",
                       borderRadius: "4px",
                       padding: "2px 6px",
                       fontSize: "11px",
@@ -467,7 +567,7 @@ export function CommandPalette({ onClose, onShowKeyboardHelp, onShowClone, onSho
         <div
           style={{
             padding: "8px 16px",
-            borderTop: "1px solid #3d3d3d",
+            borderTop: "1px solid var(--color-border)",
             display: "flex",
             gap: "16px",
             fontSize: "11px",

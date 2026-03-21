@@ -3360,6 +3360,7 @@ dependencies = [
 name = "pushvault"
 version = "4.0.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "dirs 5.0.1",
  "git2",

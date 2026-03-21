@@ -11,6 +11,9 @@ import type {
   BranchInfo,
   ConflictFile,
   TagInfo,
+  BlameLine,
+  ReflogEntry,
+  SearchResult,
 } from "../types";
 
 export const ipc = {
@@ -23,8 +26,17 @@ export const ipc = {
   pullRepo: (path: string) =>
     invoke<string>("pull_repo", { path }),
 
-  pushRepo: (path: string, message: string) =>
-    invoke<string>("push_repo", { path, message }),
+  pushRepo: (path: string) =>
+    invoke<string>("push_repo", { path }),
+
+  forcePush: (path: string) =>
+    invoke<string>("force_push", { path }),
+
+  forcePushWithLease: (path: string) =>
+    invoke<string>("force_push_with_lease", { path }),
+
+  pullWithRebase: (path: string) =>
+    invoke<string>("pull_with_rebase", { path }),
 
   syncAll: () =>
     invoke<SyncResult[]>("sync_all"),
@@ -264,4 +276,27 @@ export const ipc = {
 
   // Portable mode
   getPortableMode: () => invoke<boolean>("get_portable_mode"),
+
+  // Binary file reading (image preview)
+  readFileBase64: (repoPath: string, filePath: string) =>
+    invoke<string>("read_file_base64", { repoPath, filePath }),
+  getFileBase64AtRef: (repoPath: string, filePath: string, gitRef: string) =>
+    invoke<string>("get_file_base64_at_ref", { repoPath, filePath, gitRef }),
+
+  // Blame
+  gitBlame: (path: string, filePath: string) =>
+    invoke<BlameLine[]>("git_blame", { path, filePath }),
+
+  // Reflog
+  gitReflog: (path: string, limit = 100) =>
+    invoke<ReflogEntry[]>("git_reflog", { path, limit }),
+
+  // Global search
+  searchRepos: (repoPaths: string[], repoNames: string[], query: string, searchContent: boolean, maxResults = 100) =>
+    invoke<SearchResult[]>("search_repos", { repoPaths, repoNames, query, searchContent, maxResults }),
+
+  // MCP integration
+  generateMcpConfig: () => invoke<string>("generate_mcp_config"),
+  installMcpConfig: () => invoke<string>("install_mcp_config"),
+  aiGenerateCommitMessage: (path: string) => invoke<string>("ai_generate_commit_message", { path }),
 };

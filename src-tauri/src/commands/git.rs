@@ -4,7 +4,7 @@ use tauri::Emitter;
 use crate::{
     chunk_engine,
     git_engine,
-    models::{BisectInfo, CommitInfo, DiffResult, FileEntry, RepoStatus, StashEntry, SubmoduleInfo, SyncResult, WorktreeInfo},
+    models::{BisectInfo, BlameLine, CommitInfo, DiffResult, FileEntry, ReflogEntry, RepoStatus, StashEntry, SubmoduleInfo, SyncResult, WorktreeInfo},
     state::AppState,
 };
 
@@ -28,29 +28,52 @@ pub async fn fetch_repo(path: String) -> Result<String, String> {
 
 #[tauri::command]
 pub async fn pull_repo(path: String) -> Result<String, String> {
-    git_engine::pull_repo(path)
+    match git_engine::pull_repo(path.clone()).await {
+        Ok(msg) => Ok(msg),
+        Err(_) => {
+            // Fall back to git CLI (handles credential managers libgit2 can't)
+            git_engine::pull_cli(path, false)
+                .await
+                .map_err(|e| e.to_string())
+        }
+    }
+}
+
+/// Push the current branch to its remote (no staging, no commit).
+/// Falls back to git CLI if libgit2 auth fails.
+#[tauri::command]
+pub async fn push_repo(path: String) -> Result<String, String> {
+    match git_engine::push_repo(path.clone()).await {
+        Ok(msg) => Ok(msg),
+        Err(_) => {
+            // Fall back to git CLI (handles Windows Credential Manager, etc.)
+            git_engine::push_cli(path)
+                .await
+                .map_err(|e| e.to_string())
+        }
+    }
+}
+
+/// Force push the current branch (with + refspec).
+#[tauri::command]
+pub async fn force_push(path: String) -> Result<String, String> {
+    git_engine::force_push(path)
         .await
         .map_err(|e| e.to_string())
 }
 
-/// Run chunk pre-processing, then stage-all + commit + push.
+/// Force push with --force-with-lease (safer than raw force push).
 #[tauri::command]
-pub async fn push_repo(
-    path: String,
-    message: String,
-    state: State<'_, AppState>,
-) -> Result<String, String> {
-    let max_size_mb = {
-        let cfg = state.config.read().await;
-        cfg.max_file_size_mb
-    };
-
-    // Pre-process large files
-    chunk_engine::preprocess_large_files(&path, max_size_mb)
+pub async fn force_push_with_lease(path: String) -> Result<String, String> {
+    git_engine::force_push_with_lease(path)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())
+}
 
-    git_engine::push_repo(path, message)
+/// Pull with optional rebase mode using git CLI.
+#[tauri::command]
+pub async fn pull_with_rebase(path: String) -> Result<String, String> {
+    git_engine::pull_cli(path, true)
         .await
         .map_err(|e| e.to_string())
 }
@@ -615,4 +638,22 @@ pub async fn bisect_skip(path: String) -> Result<String, String> {
 #[tauri::command]
 pub async fn bisect_reset(path: String) -> Result<String, String> {
     git_engine::bisect_reset(path).await.map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// Blame
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn git_blame(path: String, file_path: String) -> Result<Vec<BlameLine>, String> {
+    git_engine::git_blame(path, file_path).await.map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// Reflog
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn git_reflog(path: String, limit: u32) -> Result<Vec<ReflogEntry>, String> {
+    git_engine::git_reflog(path, limit).await.map_err(|e| e.to_string())
 }

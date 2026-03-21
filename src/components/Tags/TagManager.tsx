@@ -128,20 +128,20 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
       style={{
         position: "fixed",
         inset: 0,
-        background: "var(--overlay-backdrop)",
-        backdropFilter: "blur(6px)",
+        background: "var(--color-bg-primary)",
+        backdropFilter: "blur(24px) saturate(1.5)",
+        WebkitBackdropFilter: "blur(24px) saturate(1.5)",
         zIndex: 600,
         display: "flex",
         flexDirection: "column",
-        animation: "fade-in 150ms ease both",
       }}
     >
       {/* Header */}
       <div
         style={{
-          height: "56px",
+          height: "52px",
           background: "var(--color-bg-card)",
-          borderBottom: "1px solid var(--color-border)",
+          borderBottom: "1px solid var(--color-border-subtle)",
           display: "flex",
           alignItems: "center",
           padding: "0 20px",
@@ -267,7 +267,6 @@ export function TagManager({ repoPath, repoName, onClose }: Props) {
                 padding: "16px 20px",
                 background: "var(--color-bg-card)",
                 borderBottom: "1px solid var(--color-border-subtle)",
-                animation: "fade-in 150ms ease both",
               }}
             >
               <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-secondary)", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.06em" }}>

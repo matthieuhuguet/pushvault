@@ -108,7 +108,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
         {/* Header */}
         <div style={{
           padding: "20px 24px 16px",
-          borderBottom: "1px solid #3d3d3d",
+          borderBottom: "1px solid var(--color-border-subtle)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -122,9 +122,9 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
               {!loading && totalCount > 0 && (
                 <span style={{
                   background: resolvedCount === totalCount
-                    ? "rgba(29,185,84,0.2)"
-                    : "rgba(229,83,75,0.2)",
-                  color: resolvedCount === totalCount ? "#1DB954" : "#e5534b",
+                    ? "var(--color-success-dim)"
+                    : "var(--color-error-dim)",
+                  color: resolvedCount === totalCount ? "var(--color-success)" : "var(--color-error)",
                   fontSize: "12px",
                   fontWeight: 700,
                   padding: "3px 10px",
@@ -149,7 +149,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                   onClose();
                 }}
                 style={{
-                  background: "#1DB954",
+                  background: "var(--color-accent)",
                   border: "none",
                   borderRadius: "6px",
                   padding: "8px 16px",
@@ -165,11 +165,11 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
             <button
               onClick={handleAbortMerge}
               style={{
-                background: "rgba(229,83,75,0.15)",
-                border: "1px solid rgba(229,83,75,0.4)",
+                background: "var(--color-error-dim)",
+                border: "1px solid var(--color-error-border)",
                 borderRadius: "6px",
                 padding: "8px 14px",
-                color: "#e5534b",
+                color: "var(--color-error)",
                 fontSize: "13px",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -211,8 +211,8 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
             color: "var(--color-text-secondary)",
           }}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.4 }}>
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="#1DB954" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <polyline points="22 4 12 14.01 9 11.01" stroke="#1DB954" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <polyline points="22 4 12 14.01 9 11.01" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text-primary)", margin: 0 }}>
               No conflicts detected
@@ -227,7 +227,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
             <div style={{
               width: "260px",
               flexShrink: 0,
-              borderRight: "1px solid #3d3d3d",
+              borderRight: "1px solid var(--color-border)",
               overflowY: "auto",
               padding: "12px 0",
             }}>
@@ -254,12 +254,12 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                       gap: "10px",
                       width: "100%",
                       padding: "9px 16px",
-                      background: isSelected ? "rgba(29,185,84,0.12)" : "none",
+                      background: isSelected ? "var(--color-success-dim)" : "none",
                       border: "none",
-                      borderLeft: isSelected ? "2px solid #1DB954" : "2px solid transparent",
+                      borderLeft: isSelected ? "2px solid var(--color-success)" : "2px solid transparent",
                       cursor: "pointer",
                       textAlign: "left",
-                      color: isResolved ? "#1DB954" : "#fff",
+                      color: isResolved ? "var(--color-success)" : "var(--color-text-primary)",
                     }}
                   >
                     <span style={{ fontSize: "14px", flexShrink: 0 }}>
@@ -273,7 +273,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
-                        color: isResolved ? "#1DB954" : isSelected ? "#fff" : "#b3b3b3",
+                        color: isResolved ? "var(--color-success)" : isSelected ? "var(--color-text-primary)" : "var(--color-text-secondary)",
                       }}>
                         {cf.path.split("/").pop() ?? cf.path}
                       </p>
@@ -300,7 +300,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                   {/* File header */}
                   <div style={{
                     padding: "12px 20px",
-                    borderBottom: "1px solid #3d3d3d",
+                    borderBottom: "1px solid var(--color-border)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
@@ -319,11 +319,11 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                         <button
                           onClick={() => handleResolveOurs(selectedFile)}
                           style={{
-                            background: "rgba(29,185,84,0.15)",
-                            border: "1px solid rgba(29,185,84,0.4)",
+                            background: "var(--color-accent-dim)",
+                            border: "1px solid var(--color-accent-border)",
                             borderRadius: "6px",
                             padding: "6px 14px",
-                            color: "#1DB954",
+                            color: "var(--color-accent)",
                             fontSize: "12px",
                             fontWeight: 700,
                             cursor: "pointer",
@@ -334,11 +334,11 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                         <button
                           onClick={() => handleResolveTheirs(selectedFile)}
                           style={{
-                            background: "rgba(61,155,233,0.15)",
-                            border: "1px solid rgba(61,155,233,0.4)",
+                            background: "var(--color-info-dim)",
+                            border: "1px solid var(--color-info-border)",
                             borderRadius: "6px",
                             padding: "6px 14px",
-                            color: "#3d9be9",
+                            color: "var(--color-info)",
                             fontSize: "12px",
                             fontWeight: 700,
                             cursor: "pointer",
@@ -350,8 +350,8 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                     )}
                     {resolved[selectedFile.path] && (
                       <span style={{
-                        background: "rgba(29,185,84,0.2)",
-                        color: "#1DB954",
+                        background: "var(--color-success-dim)",
+                        color: "var(--color-success)",
                         fontSize: "12px",
                         fontWeight: 700,
                         padding: "4px 12px",
@@ -369,16 +369,16 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                       flex: 1,
                       display: "flex",
                       flexDirection: "column",
-                      borderRight: "1px solid #3d3d3d",
+                      borderRight: "1px solid var(--color-border)",
                       overflow: "hidden",
                     }}>
                       <div style={{
                         padding: "8px 16px",
-                        background: "rgba(29,185,84,0.08)",
-                        borderBottom: "1px solid #3d3d3d",
+                        background: "var(--diff-add-bg)",
+                        borderBottom: "1px solid var(--color-border)",
                         fontSize: "11px",
                         fontWeight: 700,
-                        color: "#1DB954",
+                        color: "var(--color-success)",
                         textTransform: "uppercase",
                         letterSpacing: "0.08em",
                       }}>
@@ -391,7 +391,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                         overflowY: "auto",
                         fontSize: "11px",
                         lineHeight: 1.6,
-                        color: "#e0e0e0",
+                        color: "var(--color-text-primary)",
                         background: "transparent",
                         fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
                         whiteSpace: "pre-wrap",
@@ -410,11 +410,11 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                     }}>
                       <div style={{
                         padding: "8px 16px",
-                        background: "rgba(61,155,233,0.08)",
-                        borderBottom: "1px solid #3d3d3d",
+                        background: "var(--diff-hunk-bg)",
+                        borderBottom: "1px solid var(--color-border)",
                         fontSize: "11px",
                         fontWeight: 700,
-                        color: "#3d9be9",
+                        color: "var(--color-info)",
                         textTransform: "uppercase",
                         letterSpacing: "0.08em",
                       }}>
@@ -427,7 +427,7 @@ export function ConflictResolver({ repoPath, repoName, onClose }: Props) {
                         overflowY: "auto",
                         fontSize: "11px",
                         lineHeight: 1.6,
-                        color: "#e0e0e0",
+                        color: "var(--color-text-primary)",
                         background: "transparent",
                         fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
                         whiteSpace: "pre-wrap",
