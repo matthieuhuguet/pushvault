@@ -319,121 +319,40 @@ export default function App() {
       )}
 
       <Suspense fallback={lazyFallback}>
-        {activePanel === "staging" && selectedRepoPath && (
-          <div className="panel-overlay-enter">
-            <StagingArea />
-          </div>
-        )}
-
+        {activePanel === "staging" && selectedRepoPath && <StagingArea />}
         {activePanel === "history" && selectedRepoPath && (
-          <div className="panel-overlay-enter">
-            <CommitHistory
-              repoPath={selectedRepoPath}
-              repoName={repoName}
-              onClose={() => setActivePanel(null)}
-            />
-          </div>
+          <CommitHistory repoPath={selectedRepoPath} repoName={repoName} onClose={() => setActivePanel(null)} />
         )}
-
         {activePanel === "stash" && selectedRepoPath && (
-          <div className="panel-overlay-enter">
-            <StashManager
-              repoPath={selectedRepoPath}
-              repoName={repoName}
-              onClose={() => setActivePanel(null)}
-            />
-          </div>
+          <StashManager repoPath={selectedRepoPath} repoName={repoName} onClose={() => setActivePanel(null)} />
         )}
-
         {activePanel === "branches" && selectedRepoPath && (
-          <div className="panel-overlay-enter">
-            <BranchManager
-              repoPath={selectedRepoPath}
-              repoName={repoName}
-              onClose={() => setActivePanel(null)}
-            />
-          </div>
+          <BranchManager repoPath={selectedRepoPath} repoName={repoName} onClose={() => setActivePanel(null)} />
         )}
-
         {activePanel === "conflicts" && selectedRepoPath && (
-          <div className="panel-overlay-enter">
-            <ConflictResolver
-              repoPath={selectedRepoPath}
-              repoName={repoName}
-              onClose={() => setActivePanel(null)}
-            />
-          </div>
+          <ConflictResolver repoPath={selectedRepoPath} repoName={repoName} onClose={() => setActivePanel(null)} />
         )}
-
         {activePanel === "tags" && selectedRepoPath && (
-          <div className="panel-overlay-enter">
-            <TagManager
-              repoPath={selectedRepoPath}
-              repoName={repoName}
-              onClose={() => setActivePanel(null)}
-            />
-          </div>
+          <TagManager repoPath={selectedRepoPath} repoName={repoName} onClose={() => setActivePanel(null)} />
         )}
-
         {activePanel === "gitignore" && selectedRepoPath && (
-          <div className="panel-overlay-enter">
-            <GitignoreEditor
-              repoPath={selectedRepoPath}
-              repoName={repoName}
-              onClose={() => setActivePanel(null)}
-            />
-          </div>
+          <GitignoreEditor repoPath={selectedRepoPath} repoName={repoName} onClose={() => setActivePanel(null)} />
         )}
-
-        {activePanel === "scan" && (
-          <div className="panel-overlay-enter">
-            <ScanRepos onClose={() => setActivePanel(null)} />
-          </div>
-        )}
-
+        {activePanel === "scan" && <ScanRepos onClose={() => setActivePanel(null)} />}
         {activePanel === "worktrees" && selectedRepoPath && (
-          <div className="panel-overlay-enter">
-            <WorktreeManager
-              repoPath={selectedRepoPath}
-              onClose={() => setActivePanel(null)}
-            />
-          </div>
+          <WorktreeManager repoPath={selectedRepoPath} onClose={() => setActivePanel(null)} />
         )}
-
         {activePanel === "submodules" && selectedRepoPath && (
-          <div className="panel-overlay-enter">
-            <SubmoduleManager
-              repoPath={selectedRepoPath}
-              onClose={() => setActivePanel(null)}
-            />
-          </div>
+          <SubmoduleManager repoPath={selectedRepoPath} onClose={() => setActivePanel(null)} />
         )}
-
         {activePanel === "lfs" && selectedRepoPath && (
-          <div className="panel-overlay-enter">
-            <LfsManager
-              repoPath={selectedRepoPath}
-              onClose={() => setActivePanel(null)}
-            />
-          </div>
+          <LfsManager repoPath={selectedRepoPath} onClose={() => setActivePanel(null)} />
         )}
-
         {activePanel === "bisect" && selectedRepoPath && (
-          <div className="panel-overlay-enter">
-            <BisectPanel
-              repoPath={selectedRepoPath}
-              onClose={() => setActivePanel(null)}
-            />
-          </div>
+          <BisectPanel repoPath={selectedRepoPath} onClose={() => setActivePanel(null)} />
         )}
-
         {activePanel === "rebase" && selectedRepoPath && (
-          <div className="panel-overlay-enter">
-            <RebasePanel
-              repoPath={selectedRepoPath}
-              onClose={() => setActivePanel(null)}
-            />
-          </div>
+          <RebasePanel repoPath={selectedRepoPath} onClose={() => setActivePanel(null)} />
         )}
 
         {/* Onboarding wizard */}
